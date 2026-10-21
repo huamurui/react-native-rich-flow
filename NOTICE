@@ -1,0 +1,15 @@
+RichFlow 0.0.1 includes data models and selection utilities adapted from Zhihu--:
+https://github.com/huamurui/zhihu-minus-minus
+Source revision: 15ae86618d6e93b78ed90fef1dc5d3029821e235
+
+Original sources:
+- features/rich-content/richText.ts
+- features/rich-content/compileRichText.ts
+- modules/zhihu-rich-text/android/src/main/java/com/zhihuminus/richtext/TextRangeValidation.kt
+
+Changes for this package: removed application-specific types, exposed standalone
+range validation, aligned semantic attachment copying with the native behavior,
+validated source mappings, and added independent builds and tests.
+
+This package is distributed under the MIT License. See LICENSE.
+This distribution contains no Android or iOS native rendering implementation.
