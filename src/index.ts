@@ -1,4 +1,5 @@
 export type {
+  RichTextAnnotation,
   RichTextAttachment,
   RichTextDecoration,
   RichTextFlow,
@@ -16,3 +17,25 @@ export {
   isValidTextRange,
   mapRichTextSelection,
 } from './selection.js';
+export { compileDocument } from './compiler.js';
+export type {
+  CompileOptions,
+  RichFlowBlock,
+  RichFlowBreak,
+  RichFlowCodeBlock,
+  RichFlowDecoration,
+  RichFlowDocument,
+  RichFlowFormula,
+  RichFlowHeading,
+  RichFlowImage,
+  RichFlowInline,
+  RichFlowLink,
+  RichFlowList,
+  RichFlowListItem,
+  RichFlowParagraph,
+  RichFlowQuote,
+  RichFlowRuby,
+  RichFlowStyle,
+  RichFlowText,
+  RichFlowTextEmphasis,
+} from './document.js';

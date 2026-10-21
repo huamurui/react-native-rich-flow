@@ -1,0 +1,61 @@
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run check:package
+      - run: npm run export:android --workspace example
+        env:
+          EXPO_NO_TELEMETRY: 1
+      - run: npm run export:ios --workspace example
+        env:
+          EXPO_NO_TELEMETRY: 1
+
+  swift-models:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/test-native-ios.sh
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install
+        working-directory: example
+        env:
+          EXPO_NO_TELEMETRY: 1
+      - run: bash ./gradlew :react-native-rich-flow:testDebugUnitTest :app:assembleDebug -PreactNativeArchitectures=arm64-v8a --console=plain
+        working-directory: example/android

@@ -10,7 +10,16 @@
     "rootDir": "src",
     "outDir": "dist/esm",
     "forceConsistentCasingInFileNames": true,
-    "noEmitOnError": true
+    "noEmitOnError": true,
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "lib": [
+      "ES2020"
+    ],
+    "esModuleInterop": true
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ]
 }

@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "RichFlow Playground",
+    "slug": "rich-flow-playground",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "scheme": "richflow-example",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.richflow.example"
+    },
+    "android": {
+      "package": "com.richflow.example"
+    },
+    "plugins": ["expo-dev-client"]
+  }
+}

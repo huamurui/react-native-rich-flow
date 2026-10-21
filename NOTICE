@@ -1,15 +1,20 @@
-RichFlow 0.0.1 includes data models and selection utilities adapted from Zhihu--:
+RichFlow includes code adapted and generalized from Zhihu--:
 https://github.com/huamurui/zhihu-minus-minus
 Source revision: 15ae86618d6e93b78ed90fef1dc5d3029821e235
 
-Original sources:
+Original source areas:
 - features/rich-content/richText.ts
 - features/rich-content/compileRichText.ts
-- modules/zhihu-rich-text/android/src/main/java/com/zhihuminus/richtext/TextRangeValidation.kt
+- modules/zhihu-rich-text/android/
+- modules/zhihu-rich-text/ios/
+- modules/zhihu-rich-text/tests/
 
-Changes for this package: removed application-specific types, exposed standalone
-range validation, aligned semantic attachment copying with the native behavior,
-validated source mappings, and added independent builds and tests.
+The standalone package removes application-specific model types, routing,
+authentication, and business actions. It adds a general-purpose document compiler,
+Markdown/HTML adapters, a React Native component, independent packaging and tests,
+and an example application. The native module is registered as RichFlow;
+interactive range decorations use the general-purpose decoration action name.
 
+Copyright (c) 2026 huamurui.
 This package is distributed under the MIT License. See LICENSE.
-This distribution contains no Android or iOS native rendering implementation.
+Its npm and native dependencies retain their respective licenses.

@@ -1,112 +1,312 @@
 # RichFlow
 
-Native rich-text foundations for React Native content renderers.
+[简体中文](./README.zh-CN.md)
 
-**Version 0.0.1 contains the framework-independent data model and selection utilities only.** It does not yet include a React component, Android/iOS renderer, Markdown or HTML parser, or document compiler. Installing this version will not make React Native text selectable across views.
+Native continuous rich text for React Native: one text buffer, paragraph-aware
+layout, system selection across paragraphs, custom decorations, and inline
+attachments.
 
-The initial release provides useful building blocks for content adapters: UTF-16 range validation, semantic copying of inline attachments, and mapping selections back to source text nodes. There are no runtime dependencies. The package includes ESM, CommonJS, and TypeScript declarations.
+RichFlow is a foundation for readers and content renderers. Feed it a typed
+semantic document or a compiled flow, and keep navigation, menus, and application
+actions in your host app. Markdown and HTML adapters are included as entry points
+to the same model.
 
-## Install
+**Version 0.1.0-alpha.0 is an early preview of the native renderer.** The 0.0.1 API
+contains only models and selection utilities; it does not include the native
+component shown below. This alpha is intended for integration feedback; its API
+and platform behavior may change before a stable release. This repository does
+not publish to npm automatically.
+
+## Try the playground
 
 ```bash
-npm install react-native-rich-flow
+git clone https://github.com/huamurui/react-native-rich-flow.git
+cd react-native-rich-flow
+npm ci
+npm run check
+npm run example:android
+# On macOS, alternatively:
+npm run example:ios
 ```
 
-## Copy text with inline attachments
+`npm ci` installs the npm workspace and builds the library through `prepare`.
+The native run commands generate and build the example host. After installing a
+development build, use `npm run example:start` to restart Metro. Android needs
+JDK 17 and an Android SDK/device or emulator; iOS needs Xcode and CocoaPods on macOS.
 
-```ts
-import {
-  getRichTextSelectionText,
-  isValidTextRange,
-  type RichTextAttachment,
-} from 'react-native-rich-flow';
+The playground has English and Simplified Chinese UI/content, with nine cases: cross-paragraph selection, text styles,
+decorations and actions, inline attachments, content updates, long scrolling,
+Markdown, HTML, and language-specific typography. The last case includes Chinese,
+Japanese, Zhuyin, Korean, Arabic, French, and English presets. Adjust font size, alignment, theme, and selection; inspect
+source mappings and actions; paste system-copied text to check attachment
+substitution. Its images and pre-rendered formula SVGs are embedded data URLs.
+See the [example guide](./example/README.md) for the interaction checklist.
 
-const text = 'Energy: \uFFFC.';
-const attachments: readonly RichTextAttachment[] = [
-  {
-    id: 'energy-formula',
-    nodeId: 'formula-1',
-    kind: 'formula',
-    start: 8,
-    end: 9,
-    copyText: 'E = mc^2',
-  },
-];
+**Expo Go cannot load RichFlow.** Use a custom [development build](https://docs.expo.dev/develop/development-builds/introduction/).
+Web and clients without the module display the supplied `fallback` or an
+installation message; they do not receive an equivalent browser renderer.
 
-const flow = { text, attachments };
+## Implemented capabilities
 
-isValidTextRange(text, 0, text.length); // true
-getRichTextSelectionText(flow, 0, text.length);
-// 'Energy: E = mc^2.'
+These describe the implementation, not a claim of completed device acceptance.
+See [native behavior and limits](./docs/native-behavior.md) for platform details.
 
-isValidTextRange('A😀B', 1, 3); // true
-isValidTextRange('A😀B', 1, 2); // false: splits a surrogate pair
+| Capability | Android | iOS | Boundary |
+| --- | --- | --- | --- |
+| Continuous text and cross-paragraph system selection | TextView / Spannable | UITextView / TextKit | Within one flow |
+| Bold, emphasis, underline, strike, highlight, scripts, code, links | Implemented | Implemented | Semantic styles, not arbitrary CSS |
+| Headings, quotes, lists, code blocks, paragraph spacing | Implemented | Implemented | One continuous text layout |
+| Solid, dashed, dotted, and wavy range decorations | Implemented | Implemented | Complex bidirectional layout needs testing |
+| Character emphasis and horizontal ruby readings | Implemented | Implemented | Independent annotations; original text stays unchanged |
+| Language, direction, logical alignment, hyphenation | System layout | System layout | OS-specific shaping and line breaking |
+| Inline image and formula-image attachments | Implemented | Implemented | One U+FFFC slot per attachment |
+| Semantic copying and selection source mapping | Native copy + JS mapping | Native copy + JS mapping | UTF-16 semantic offsets |
+| Asynchronous attachment loading and height updates | Implemented | Implemented | Initial geometry can change after loading |
+| Markdown / HTML input | Shared adapter | Shared adapter | Common semantic subset |
+
+## Use in another app
+
+The development baseline is Expo SDK 55, Expo Modules Core 55, React 19.2, and
+React Native 0.83.10. Broad peer version ranges are not a compatibility matrix.
+Node.js must satisfy the package's `engines` field. An existing bare React Native
+app must first [install and configure Expo Modules](https://docs.expo.dev/bare/installing-expo-modules/)
+using the instructions appropriate to its React Native / Expo versions.
+
+Install the alpha explicitly:
+
+```bash
+npm install react-native-rich-flow@0.1.0-alpha.0
+# Or follow the alpha channel: npm install react-native-rich-flow@alpha
 ```
 
-The attachment occupies one `U+FFFC` character in the layout text. Its `copyText` replaces that character only in the copied result; offsets in the original text remain unchanged.
+To test a local checkout instead, build a package:
 
-## API
+```bash
+# In the library repository:
+npm pack
 
-### `isValidTextRange(text, start, end)`
+# In a sibling application with Expo Modules already configured:
+npm install ../react-native-rich-flow/react-native-rich-flow-0.1.0-alpha.0.tgz
+npx expo run:android
+# Or: npx expo run:ios
+```
 
-Checks a nonempty, half-open range `[start, end)` in a string. Offsets must be safe integers within the string and must not split a UTF-16 surrogate pair. Empty, reversed, fractional, and out-of-bounds ranges return `false`.
+The package includes native sources and Expo autolinking metadata. Rebuild the
+native application after installing or changing native code. Fast Refresh cannot
+add a native module to an existing binary.
 
-Offsets use JavaScript UTF-16 code units, not bytes, Unicode code points, or visual glyphs. Validation does **not** enforce complete grapheme clusters: combining characters and joined emoji may span more than one valid boundary.
+## Minimal document → flow → view
 
-### `getRichTextSelectionText(flow, start, end)`
+```tsx
+import { useMemo, useState } from 'react';
+import { ScrollView, Text } from 'react-native';
+import { compileDocument, type RichFlowDocument } from 'react-native-rich-flow';
+import { RichFlow } from 'react-native-rich-flow/native';
 
-Accepts an object with `text` and `attachments`. Returns the selected text, replacing valid inline attachment slots with their `copyText`. An invalid selection returns an empty string.
+const typography = { fontSize: 17, lineHeight: 28, paragraphSpacing: 12 };
+const document: RichFlowDocument = {
+  id: 'article',
+  blocks: [
+    {
+      id: 'p1',
+      type: 'paragraph',
+      children: [
+        { id: 't1', type: 'text', text: 'Select from this paragraph ' },
+        {
+          id: 'bold', type: 'strong',
+          children: [{ id: 't2', type: 'text', text: 'across the next one.' }],
+        },
+      ],
+    },
+    {
+      id: 'p2',
+      type: 'paragraph',
+      children: [{ id: 't3', type: 'text', text: 'The same selection can include 😀.' }],
+    },
+  ],
+};
 
-Attachments are processed in text order without modifying the input array. Only valid one-character ranges containing `U+FFFC` are replaced. Invalid attachments are ignored; for duplicate or overlapping slots, the first accepted slot is used. Unmatched placeholder characters remain in the copied text.
+export default function Reader() {
+  const [selectedText, setSelectedText] = useState('');
+  const flow = useMemo(() => compileDocument(document, typography), []);
 
-### `mapRichTextSelection(flow, start, end)`
-
-Accepts an object with `text`, `attachments`, and `sourceMap`. Returns a mapping with this shape, or `null` when a selection cannot be mapped:
-
-```ts
-{
-  text: string;
-  start: { nodeId: string; paragraphId?: string; offset: number };
-  end: { nodeId: string; paragraphId?: string; offset: number };
+  return (
+    <ScrollView contentContainerStyle={{ padding: 20 }}>
+      <RichFlow
+        flow={flow}
+        config={typography}
+        selectable
+        onSelectionChange={(event) => setSelectedText(event.text)}
+      />
+      <Text>Selected: {selectedText || 'Long-press the content above.'}</Text>
+    </ScrollView>
+  );
 }
 ```
 
-Source maps describe rendered ranges using three kinds:
+Give every document node a unique, nonempty `id`. Treat documents and flows as
+immutable. `compileDocument` generates a content revision; if you supply your own
+`textVersion`, update it whenever the content changes.
 
-- `text`: a one-to-one mapping to a source text range of the same UTF-16 length.
-- `synthetic`: generated content, such as list markers or paragraph separators, with no source text selection endpoint.
-- `attachment`: a placeholder mapped to a source range; its boundaries map to `sourceStart` and `sourceEnd`.
+When changing font size, line height, or paragraph spacing, recompile with the
+new options **and** pass the same metrics to `RichFlow.config`. Compiled paragraphs
+contain explicit metrics; changing only the native config can leave heading and
+paragraph metrics out of sync.
 
-Provide valid, ordered, nonoverlapping source ranges. Selection endpoints inside synthetic content move inward to the selected source content. A selection containing only synthetic content has no mapping. The returned `text` follows the same semantic-copy rules as `getRichTextSelectionText`.
+`RichFlow` measures its available width and updates its height from native layout.
+Use it in a container with a defined available width. An empty flow has zero
+content height. It does not scroll internally; the example uses a `ScrollView`.
 
-Source offsets refer to the text nodes or paragraphs identified by your adapter. They are **not automatically offsets into raw Markdown or HTML source**. Markup delimiters, HTML entities, and other transformations require an additional source mapping in the adapter.
+## Markdown and HTML adapters
 
-## Data model
+```ts
+import { compileDocument } from 'react-native-rich-flow';
+import { parseHtml, parseMarkdown } from 'react-native-rich-flow/adapters';
 
-`RichTextFlow` describes one continuous UTF-16 text buffer together with its identity/version, inline spans, paragraph styles, decorations, attachments, and source map. Related types include `RichTextSpan`, `RichTextParagraph`, `RichTextDecoration`, `RichTextAttachment`, `RichTextSourceRange`, and `RichTextSelectionMapping`.
+const options = { fontSize: 17, lineHeight: 28, paragraphSpacing: 12 };
+const markdownFlow = compileDocument(
+  parseMarkdown('# Hello\n\nFirst paragraph.\n\n**Second paragraph.**', { id: 'md' }),
+  options,
+);
+const htmlFlow = compileDocument(
+  parseHtml('<p>Read <a href="/guide">the guide</a>.</p>', {
+    id: 'html', baseUrl: 'https://example.com',
+  }),
+  options,
+);
+```
 
-The model has no dependency on a particular content format or application. Version 0.0.1 exposes the schema for integrations; it does not render these styles or attachments itself. The API is early and may change before a stable release.
+Pass either result to the same `<RichFlow flow={...} config={options} />`.
+The adapters preserve common text styles, paragraphs, headings, lists, quotes,
+code, links, and images. Tables become textual rows rather than grid layouts.
+HTML with `data-latex` can represent a formula; a rendered image source is still
+needed to display the formula. Markdown math syntax is not a TeX renderer.
 
-## Direction
+The adapters discard scripts, styles, forms, embedded documents, inline SVG/MathML,
+and other unsupported active elements. They filter link/image schemes and can
+resolve relative URLs with `baseUrl`. They do not execute HTML, implement a CSS
+cascade, or produce sanitized HTML for use in a browser. Link actions are
+reported to the host; RichFlow does not automatically navigate.
 
-Future releases are intended to add a native continuous-text view and general-purpose document compilation tools. Markdown, HTML, and application-specific content can then be adapted to a shared model.
+## Public entry points
 
-These are planned capabilities, not features of 0.0.1. Cross-view selection, arbitrary embedded React components, full browser CSS support, and a TeX typesetting engine are not part of this release.
+| Import | Exports |
+| --- | --- |
+| `react-native-rich-flow` | `compileDocument`, document/flow types, `isValidTextRange`, `getRichTextSelectionText`, `mapRichTextSelection` |
+| `react-native-rich-flow/native` | `RichFlow`, `isRichFlowAvailable`, component/config/event types |
+| `react-native-rich-flow/adapters` | `parseMarkdown`, `parseHtml`, `ParseOptions` |
+
+The root entry does not import React Native or the parsers. The native entry needs
+the React Native and Expo Modules peers. Parser dependencies are used by the
+adapter entry. ESM, CommonJS, and TypeScript declarations are included.
+
+`RichFlow` accepts `flow`, `config`, `selectable`, `suppressDoubleTapSelection`,
+`fallback`, regular `ViewProps`, and these callbacks:
+
+- `onSelectionChange`: `flowId`, `textVersion`, UTF-16 `start` / `end`, semantic
+  `text`, and `mapping`. Cleared selection is `-1 / -1`, empty text, and `null` mapping.
+- `onAction`: `kind` (`link`, `decoration`, `attachment`, `attachmentLongPress`),
+  `id`, range, flow identity, and an optional URL. The host decides the action.
+- `onHeightChange`: measured content height in React Native layout units.
+
+`RichFlowConfig` contains font size, minimum line height, paragraph spacing,
+text/secondary/link colors, `justify`, and `textAlign` (`left`, `center`, `right`,
+`start`, `end`). `language` accepts a BCP 47 tag, `writingDirection` is `auto`,
+`ltr`, or `rtl`, and `hyphenation` is `none`, `normal`, or `full`.
+Use the flow's `decorations` array for custom range decoration styles and actions.
+In this alpha, span-level `color` is applied only to highlight backgrounds and
+link text; colors on other style spans such as `strong` are ignored.
+
+## Character emphasis and ruby
+
+Use `textEmphasis` for per-character marks and `ruby` for a supplied reading:
+
+```ts
+const annotated = compileDocument({
+  id: 'reading',
+  blocks: [{ id: 'p', type: 'paragraph', children: [{
+    id: 'dots', type: 'textEmphasis', mark: 'dot', position: 'under',
+    children: [{
+      id: 'reading-han', type: 'ruby', annotation: 'hàn',
+      children: [{ id: 'han', type: 'text', text: '汉' }],
+    }],
+  }] }],
+});
+// annotated.text is '汉'; copying selects the base, not 'hàn'.
+```
+
+Marks are `dot`, `circle`, or `sesame`, placed `over` or `under` (default: under).
+Italic `emphasis` remains a separate style. Ruby defaults to over and supports
+furigana, pinyin, and horizontal Zhuyin. Readings are caller-supplied, not generated.
+HTML `<ruby>漢<rt>かん</rt>字<rt>じ</rt></ruby>` maps to the same model;
+`rt` and `rp` never enter copied base text. Use `data-ruby-position="under"` or
+`data-text-emphasis="sesame" data-emphasis-position="over"` for explicit positioning.
+
+The compiler stores annotations separately in `flow.annotations`. Native layout
+reserves vertical space; ruby is fitted to the base width. Prefer one ruby node
+per character or reading unit: a wrapped group divides reading graphemes by base
+grapheme proportions, without inferring phonetic alignment. Vertical text,
+traditional Zhuyin side annotations, automatic readings, and multiple ruby tiers
+are not implemented. See [native behavior](./docs/native-behavior.md).
+
+Choose language and writing direction explicitly for each flow. French spacing
+comes from the source's nonbreaking spaces; the renderer does not rewrite text.
+System Korean word wrapping, Arabic shaping, and Latin hyphenation can differ by OS.
+
+## Selection and attachment contracts
+
+`isValidTextRange(text, start, end)` checks a nonempty `[start, end)` range of safe
+integer UTF-16 offsets, including surrogate-pair boundaries. It does not enforce
+complete grapheme clusters.
+
+`getRichTextSelectionText(flow, start, end)` copies text while replacing valid
+single-character U+FFFC attachment slots with `copyText`. Invalid ranges return
+an empty string. It does not change the flow or its offsets.
+
+`mapRichTextSelection(flow, start, end)` returns semantic text and source
+endpoints `{ nodeId, paragraphId?, offset }`, or `null` for an invalid/unmappable
+selection. Generated paragraph separators and list markers are synthetic;
+endpoints move inward to real selected content. Source offsets are into decoded
+semantic nodes, **not raw Markdown or HTML source positions**.
+
+A `formula` attachment's `latex` is its semantic value. Supply a pre-rendered
+image URL or image data URL for visual mathematics. The library contains no TeX
+engine. Images and formula images remain part of the same selectable buffer.
+
+## Current limits
+
+Selection across separate native views, arbitrary embedded React components,
+editable text, browser CSS/layout, full table layout, and TeX typesetting are out
+of scope. The text buffer is not virtualized. Long-document performance,
+accessibility, complex bidirectional text, and selection handles require testing
+on the devices your application supports. Native builds and model tests do not
+replace those interaction checks.
 
 ## Development
 
 ```bash
 npm ci
 npm run check
-npm pack --dry-run
+npm run check:package
+npm run test:native:ios             # Foundation checks; macOS + Xcode
+npm run test:native:ios-layout      # TextKit geometry; boot an iOS simulator first
+npm run example:prebuild           # Generates the native example projects
+npm run test:native:android         # JVM tests in the generated Android host
+npm run test:native:android-layout  # Bitmap regressions; connected Android device/emulator
 ```
 
-`check` builds both module formats, checks TypeScript consumer examples, and runs the Node.js test suite. `prepack` builds the package; `prepublishOnly` runs the full check. Publishing instructions are in `PUBLISHING.md` in the source checkout.
-
-The published archive also includes the TypeScript source, build script, tests, configuration, and `npm-shrinkwrap.json`, so it can be rebuilt with the same commands after extraction. TypeScript is a development dependency only; the lockfile adds no runtime dependencies.
+Run commands from the repository root. The repository uses npm workspaces with
+one `package-lock.json`; install dependencies there rather than independently in
+`example/`. Generated `example/android`, `example/ios`, build outputs, and local
+credentials are excluded from version control. See the [example guide](./example/README.md),
+[native behavior](./docs/native-behavior.md), [changelog](./CHANGELOG.md), and
+[publishing instructions](./PUBLISHING.md).
+Recorded local results and remaining device checks are in [validation](./docs/validation.md).
 
 ## Origin and license
 
-Extracted and generalized from the rich-content model and selection utilities in [zhihu-minus-minus](https://github.com/huamurui/zhihu-minus-minus), based on commit [`15ae86618d6e93b78ed90fef1dc5d3029821e235`](https://github.com/huamurui/zhihu-minus-minus/commit/15ae86618d6e93b78ed90fef1dc5d3029821e235).
-
-This package is distributed under the MIT License. See [LICENSE](./LICENSE).
+RichFlow extracts and generalizes native text-flow work from
+[zhihu-minus-minus](https://github.com/huamurui/zhihu-minus-minus), with application
+routing, authentication, and business actions removed. See [NOTICE](./NOTICE) for
+source provenance. RichFlow is licensed under the [MIT License](./LICENSE),
+Copyright (c) 2026 huamurui. Dependencies retain their own licenses.

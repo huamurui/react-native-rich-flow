@@ -1,0 +1,28 @@
+{
+  "name": "rich-flow-example",
+  "version": "0.1.0-alpha.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "prebuild": "expo prebuild --no-install",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test scripts/check-cases.mjs",
+    "export:android": "expo export --platform android",
+    "export:ios": "expo export --platform ios"
+  },
+  "dependencies": {
+    "expo": "55.0.31",
+    "expo-dev-client": "55.0.40",
+    "react": "19.2.0",
+    "react-native": "0.83.10",
+    "react-native-rich-flow": "file:..",
+    "react-native-safe-area-context": "5.6.2"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "5.9.3"
+  }
+}

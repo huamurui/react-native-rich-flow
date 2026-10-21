@@ -9,9 +9,9 @@ import {
 
 test('ESM and CommonJS expose the same working public utilities', () => {
   const commonjs = createRequire(import.meta.url)('react-native-rich-flow');
-  assert.deepEqual(Object.keys(commonjs).sort(), [
-    'getRichTextSelectionText', 'isValidTextRange', 'mapRichTextSelection',
-  ]);
+  for (const name of ['getRichTextSelectionText', 'isValidTextRange', 'mapRichTextSelection']) {
+    assert.equal(typeof commonjs[name], 'function');
+  }
   assert.equal(commonjs.getRichTextSelectionText({ text: '甲😀乙', attachments: [] }, 1, 3), '😀');
 });
 

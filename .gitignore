@@ -7,3 +7,9 @@ dist/
 .env
 .env.*
 npm-debug.log*
+.expo/
+example/android/
+example/ios/
+example/dist/
+coverage/
+*.xcuserstate

@@ -1,7 +1,7 @@
 {
   "name": "react-native-rich-flow",
-  "version": "0.0.1",
-  "description": "Rich-text flow models and UTF-16 selection utilities for React Native content renderers.",
+  "version": "0.1.0-alpha.0",
+  "description": "Native continuous rich-text flows, selection, decorations and inline attachments for React Native.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -16,31 +16,64 @@
       "require": {
         "types": "./dist/cjs/index.d.ts",
         "default": "./dist/cjs/index.js"
+      },
+      "react-native": "./dist/esm/index.js"
+    },
+    "./package.json": "./package.json",
+    "./native": {
+      "react-native": "./dist/esm/native/index.js",
+      "import": {
+        "types": "./dist/esm/native/index.d.ts",
+        "default": "./dist/esm/native/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/native/index.d.ts",
+        "default": "./dist/cjs/native/index.js"
       }
     },
-    "./package.json": "./package.json"
+    "./adapters": {
+      "react-native": "./dist/esm/adapters/index.js",
+      "import": {
+        "types": "./dist/esm/adapters/index.d.ts",
+        "default": "./dist/esm/adapters/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/adapters/index.d.ts",
+        "default": "./dist/cjs/adapters/index.js"
+      }
+    }
   },
   "files": [
     "dist",
     "src",
-    "scripts",
-    "tests",
-    "tsconfig.json",
-    "npm-shrinkwrap.json",
+    "android",
+    "ios",
+    "expo-module.config.json",
     "README.md",
-    "PUBLISHING.md",
     "CHANGELOG.md",
     "LICENSE",
-    "NOTICE"
+    "NOTICE",
+    "README.zh-CN.md",
+    "docs"
   ],
   "sideEffects": false,
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --test tests/*.test.mjs",
-    "typecheck": "tsc -p tests/tsconfig.json",
-    "check": "npm run build && npm run typecheck && npm test",
+    "typecheck": "tsc -p tests/tsconfig.json && tsc -p example/tsconfig.json --noEmit",
+    "check": "npm run build && npm run typecheck && npm test && npm test --workspace example",
     "prepack": "npm run build",
-    "prepublishOnly": "npm run check"
+    "prepublishOnly": "npm run check",
+    "check:package": "node scripts/check-package.mjs",
+    "test:native:ios": "bash scripts/test-native-ios.sh",
+    "test:native:ios-layout": "bash scripts/test-native-ios-layout.sh",
+    "test:native:android": "bash scripts/test-native-android.sh",
+    "example:start": "npm run build && npm run start --workspace example",
+    "example:android": "npm run build && npm run android --workspace example",
+    "example:ios": "npm run build && npm run ios --workspace example",
+    "example:prebuild": "npm run build && npm run prebuild --workspace example",
+    "prepare": "npm run build",
+    "test:native:android-layout": "bash scripts/test-native-android-layout.sh"
   },
   "keywords": [
     "react-native",
@@ -51,10 +84,17 @@
   ],
   "publishConfig": {
     "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org/",
+    "tag": "alpha"
   },
   "devDependencies": {
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "@types/react": "19.2.18",
+    "expo-modules-core": "55.0.26",
+    "react": "19.2.0",
+    "react-native": "0.83.10",
+    "react-test-renderer": "19.2.0",
+    "@types/react-test-renderer": "19.1.0"
   },
   "repository": {
     "type": "git",
@@ -63,5 +103,31 @@
   "homepage": "https://github.com/huamurui/react-native-rich-flow#readme",
   "bugs": {
     "url": "https://github.com/huamurui/react-native-rich-flow/issues"
+  },
+  "workspaces": [
+    "example"
+  ],
+  "peerDependencies": {
+    "expo-modules-core": "^55.0.26",
+    "react": ">=19.0.0",
+    "react-native": ">=0.83.0"
+  },
+  "peerDependenciesMeta": {
+    "expo-modules-core": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "htmlparser2": "10.0.0",
+    "marked": "15.0.12"
+  },
+  "engines": {
+    "node": ">=20.19.4"
   }
 }

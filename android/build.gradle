@@ -1,0 +1,28 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.richflow.text'
+version = new groovy.json.JsonSlurper().parse(file('../package.json')).version
+
+expoModule {
+  canBePublished false
+}
+
+android {
+  namespace 'com.richflow.text'
+
+  defaultConfig {
+    versionCode 1
+    versionName project.version.toString()
+    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+  }
+}
+
+dependencies {
+  implementation 'com.caverock:androidsvg-aar:1.4'
+  testImplementation 'junit:junit:4.13.2'
+  androidTestImplementation 'androidx.test:runner:1.6.2'
+  androidTestImplementation 'junit:junit:4.13.2'
+}

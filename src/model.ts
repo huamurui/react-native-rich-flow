@@ -42,6 +42,19 @@ export interface RichTextDecoration extends RichTextRange {
   readonly actionId?: string;
 }
 
+interface RichTextAnnotationBase extends RichTextRange {
+  readonly id: string;
+  readonly nodeId: string;
+  readonly position?: 'over' | 'under';
+  readonly color?: string;
+}
+
+/** Visual annotations never insert characters into the selectable text buffer. */
+export type RichTextAnnotation = RichTextAnnotationBase & (
+  | { readonly kind: 'emphasis'; readonly mark?: 'dot' | 'circle' | 'sesame' }
+  | { readonly kind: 'ruby'; readonly text: string }
+);
+
 /** Each attachment occupies exactly one U+FFFC character in the flow. */
 export interface RichTextAttachment extends RichTextRange {
   readonly id: string;
@@ -65,7 +78,7 @@ export interface RichTextSourceRange extends RichTextRange {
   readonly kind: 'text' | 'synthetic' | 'attachment';
 }
 
-/** One UTF-16 text buffer. This release models flows but does not render them. */
+/** One continuous UTF-16 text buffer, rendered by a single native RichFlow view. */
 export interface RichTextFlow {
   readonly id: string;
   /** Supplied by the caller; change it when the flow's content changes. */
@@ -74,6 +87,7 @@ export interface RichTextFlow {
   readonly spans: readonly RichTextSpan[];
   readonly paragraphs: readonly RichTextParagraph[];
   readonly decorations: readonly RichTextDecoration[];
+  readonly annotations?: readonly RichTextAnnotation[];
   readonly attachments: readonly RichTextAttachment[];
   readonly sourceMap: readonly RichTextSourceRange[];
 }
