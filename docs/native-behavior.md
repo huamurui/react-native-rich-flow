@@ -129,9 +129,9 @@ geometry, prop batching, and attachment request/viewport coordination. The Swift
 checks cover parsing, ranges, semantic copying, and viewport state.
 
 These model tests do not establish UIKit or Android rendering correctness,
-selection-handle behavior, accessibility, or performance. The extracted module's
-prior application validation is not validation of this standalone package.
-Build and device results for this repository should be recorded separately.
+selection-handle behavior, accessibility, or performance. Record native build
+and device results separately from model tests in this repository's
+[validation notes](./validation.md).
 
 ### Background and annotation layout regressions
 

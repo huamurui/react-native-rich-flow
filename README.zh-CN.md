@@ -1,5 +1,13 @@
 # RichFlow
 
+[![npm alpha 版本](https://img.shields.io/npm/v/react-native-rich-flow/alpha?logo=npm&label=npm%40alpha)](https://www.npmjs.com/package/react-native-rich-flow?activeTab=versions)
+[![main 分支检查状态](https://img.shields.io/github/actions/workflow/status/huamurui/react-native-rich-flow/ci.yml?branch=main&label=checks&logo=github)](https://github.com/huamurui/react-native-rich-flow/actions/workflows/ci.yml?query=branch%3Amain)
+[![MIT 许可](https://img.shields.io/npm/l/react-native-rich-flow)](./LICENSE)
+
+[![内置 TypeScript 类型声明](https://img.shields.io/badge/TypeScript-types%20included-3178C6?logo=typescript&logoColor=white)](#入口与事件)
+[![原生平台：Android 和 iOS](https://img.shields.io/badge/platforms-Android%20%7C%20iOS-16856B?logo=react&logoColor=white)](./docs/native-behavior.md)
+[![原生组件使用 Expo Modules](https://img.shields.io/badge/native-Expo%20Modules-000020?logo=expo&logoColor=white)](#接入自己的应用)
+
 [English](./README.md)
 
 React Native 原生连续富文本组件：用一份文字缓冲区承载段落、样式、装饰和行内附件，让系统选区可以跨越段落。
@@ -220,6 +228,6 @@ npm run test:native:android-layout # 真实位图回归，需连接 Android 设�
 
 本次本地检查结果与待完成的设备验收见[验证记录](./docs/validation.md)。
 
-## 来源与许可
+## 许可
 
-RichFlow 从 [zhihu-minus-minus](https://github.com/huamurui/zhihu-minus-minus) 的连续富文本实现中提取并通用化，移除了应用路由、认证及业务动作。来源记录见 [NOTICE](./NOTICE)。本库采用 [MIT 许可](./LICENSE)，Copyright (c) 2026 huamurui；依赖保留各自许可证。
+RichFlow 采用 [MIT 许可](./LICENSE)，Copyright (c) 2026 huamurui。版权与依赖许可说明见 [NOTICE](./NOTICE)；第三方依赖保留各自许可证。

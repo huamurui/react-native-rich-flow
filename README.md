@@ -1,5 +1,13 @@
 # RichFlow
 
+[![npm alpha version](https://img.shields.io/npm/v/react-native-rich-flow/alpha?logo=npm&label=npm%40alpha)](https://www.npmjs.com/package/react-native-rich-flow?activeTab=versions)
+[![Checks on main](https://img.shields.io/github/actions/workflow/status/huamurui/react-native-rich-flow/ci.yml?branch=main&label=checks&logo=github)](https://github.com/huamurui/react-native-rich-flow/actions/workflows/ci.yml?query=branch%3Amain)
+[![MIT license](https://img.shields.io/npm/l/react-native-rich-flow)](./LICENSE)
+
+[![TypeScript types included](https://img.shields.io/badge/TypeScript-types%20included-3178C6?logo=typescript&logoColor=white)](#public-entry-points)
+[![Native platforms: Android and iOS](https://img.shields.io/badge/platforms-Android%20%7C%20iOS-16856B?logo=react&logoColor=white)](./docs/native-behavior.md)
+[![Native component uses Expo Modules](https://img.shields.io/badge/native-Expo%20Modules-000020?logo=expo&logoColor=white)](#use-in-another-app)
+
 [简体中文](./README.zh-CN.md)
 
 Native continuous rich text for React Native: one text buffer, paragraph-aware
@@ -321,10 +329,8 @@ credentials are excluded from version control. See the [example guide](./example
 [publishing instructions](./PUBLISHING.md).
 Recorded local results and remaining device checks are in [validation](./docs/validation.md).
 
-## Origin and license
+## License
 
-RichFlow extracts and generalizes native text-flow work from
-[zhihu-minus-minus](https://github.com/huamurui/zhihu-minus-minus), with application
-routing, authentication, and business actions removed. See [NOTICE](./NOTICE) for
-source provenance. RichFlow is licensed under the [MIT License](./LICENSE),
-Copyright (c) 2026 huamurui. Dependencies retain their own licenses.
+RichFlow is licensed under the [MIT License](./LICENSE).
+Copyright (c) 2026 huamurui. See [NOTICE](./NOTICE) for copyright and dependency
+license information. Dependencies retain their own licenses.

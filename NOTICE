@@ -1,20 +1,8 @@
-RichFlow includes code adapted and generalized from Zhihu--:
-https://github.com/huamurui/zhihu-minus-minus
-Source revision: 15ae86618d6e93b78ed90fef1dc5d3029821e235
-
-Original source areas:
-- features/rich-content/richText.ts
-- features/rich-content/compileRichText.ts
-- modules/zhihu-rich-text/android/
-- modules/zhihu-rich-text/ios/
-- modules/zhihu-rich-text/tests/
-
-The standalone package removes application-specific model types, routing,
-authentication, and business actions. It adds a general-purpose document compiler,
-Markdown/HTML adapters, a React Native component, independent packaging and tests,
-and an example application. The native module is registered as RichFlow;
-interactive range decorations use the general-purpose decoration action name.
+RichFlow
+Native continuous rich text for React Native.
 
 Copyright (c) 2026 huamurui.
-This package is distributed under the MIT License. See LICENSE.
-Its npm and native dependencies retain their respective licenses.
+RichFlow is distributed under the MIT License. See LICENSE.
+
+Third-party npm and native dependencies retain their respective copyright
+notices and licenses. RichFlow's MIT License does not replace those licenses.
