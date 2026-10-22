@@ -64,6 +64,14 @@ See [native behavior and limits](./docs/native-behavior.md) for platform details
 | Asynchronous attachment loading and height updates | Implemented | Implemented | Initial geometry can change after loading |
 | Markdown / HTML input | Shared adapter | Shared adapter | Common semantic subset |
 
+Screenshots from the included playground on Android 16 (vivo V2509A), using the
+light theme. Tap an image for full resolution. [Capture notes](./docs/images/README.md).
+
+| Cross-paragraph selection | Decorations that wrap with text |
+| --- | --- |
+| <a href="./docs/images/android-selection.png"><img src="./docs/images/android-selection.png" width="320" alt="Native selection spans paragraphs within one text flow."></a> | <a href="./docs/images/android-decorations.png"><img src="./docs/images/android-decorations.png" width="320" alt="Solid, dashed, dotted, and wavy decorations follow wrapped text."></a> |
+| Native selection spans paragraphs within one text flow. | Solid, dashed, dotted, and wavy decorations follow wrapped text. |
+
 ## Use in another app
 
 The development baseline is Expo SDK 55, Expo Modules Core 55, React 19.2, and
@@ -188,6 +196,11 @@ resolve relative URLs with `baseUrl`. They do not execute HTML, implement a CSS
 cascade, or produce sanitized HTML for use in a browser. Link actions are
 reported to the host; RichFlow does not automatically navigate.
 
+| HTML → native text | Inline images and formulas |
+| --- | --- |
+| <a href="./docs/images/android-html.png"><img src="./docs/images/android-html.png" width="320" alt="Semantic HTML becomes native headings, emphasis, highlight, and scripts."></a> | <a href="./docs/images/android-attachments.png"><img src="./docs/images/android-attachments.png" width="320" alt="Images and pre-rendered formula SVGs participate in the same text layout."></a> |
+| Semantic HTML becomes native headings, emphasis, highlight, and scripts. | Images and pre-rendered formula SVGs participate in the same text layout. |
+
 ## Public entry points
 
 | Import | Exports |
@@ -252,6 +265,11 @@ are not implemented. See [native behavior](./docs/native-behavior.md).
 Choose language and writing direction explicitly for each flow. French spacing
 comes from the source's nonbreaking spaces; the renderer does not rewrite text.
 System Korean word wrapping, Arabic shaping, and Latin hyphenation can differ by OS.
+
+| Chinese: pinyin and emphasis | Japanese: furigana and emphasis |
+| --- | --- |
+| <a href="./docs/images/android-cjk-pinyin.png"><img src="./docs/images/android-cjk-pinyin.png" width="320" alt="Per-character pinyin above the text; dots, circles, and sesame marks below."></a> | <a href="./docs/images/android-cjk-furigana.png"><img src="./docs/images/android-cjk-furigana.png" width="320" alt="Horizontal furigana and sesame emphasis marks above the text."></a> |
+| Per-character pinyin above the text; dots, circles, and sesame marks below. | Horizontal furigana and sesame emphasis marks above the text. |
 
 ## Selection and attachment contracts
 

@@ -41,6 +41,13 @@ npm run example:ios
 | 异步附件加载与高度更新 | 已实现 | 已实现 | 首次加载后可能重新布局 |
 | Markdown / HTML 输入 | 共享适配器 | 共享适配器 | 常用语义子集 |
 
+以下为仓库示例在 Android 16（vivo V2509A）上的浅色主题实机截图，点击可查看原图。[截图说明](./docs/images/README.md)。
+
+| 跨段落选择 | 随文字换行的装饰线 |
+| --- | --- |
+| <a href="./docs/images/android-selection.png"><img src="./docs/images/android-selection.png" width="320" alt="同一个文字流内，原生选区可以跨越段落。"></a> | <a href="./docs/images/android-decorations.png"><img src="./docs/images/android-decorations.png" width="320" alt="实线、虚线、点线和波浪线跟随文字换行。"></a> |
+| 同一个文字流内，原生选区可以跨越段落。 | 实线、虚线、点线和波浪线跟随文字换行。 |
+
 ## 接入自己的应用
 
 开发基线为 Expo SDK 55、Expo Modules Core 55、React 19.2 和 React Native 0.83.10。peer 版本范围不等于所有版本都经过验证。Node.js 版本以包的 `engines` 为准。
@@ -134,6 +141,11 @@ const htmlFlow = compileDocument(
 
 适配器丢弃脚本、样式、表单、嵌入文档和内联 SVG / MathML 等不支持的活动节点，筛选链接与图片协议，并支持通过 `baseUrl` 解析相对地址。它不执行 HTML、不实现 CSS，也不是供浏览器使用的 HTML 清洗器。链接点击只产生事件，跳转由宿主决定。
 
+| HTML → 原生文字 | 行内图片与公式 |
+| --- | --- |
+| <a href="./docs/images/android-html.png"><img src="./docs/images/android-html.png" width="320" alt="HTML 语义映射为原生标题、强调、高亮和上下标。"></a> | <a href="./docs/images/android-attachments.png"><img src="./docs/images/android-attachments.png" width="320" alt="图片和预渲染公式 SVG 作为行内附件，与正文共同排版。"></a> |
+| HTML 语义映射为原生标题、强调、高亮和上下标。 | 图片和预渲染公式 SVG 作为行内附件，与正文共同排版。 |
+
 ## 入口与事件
 
 | 导入路径 | 导出 |
@@ -175,6 +187,11 @@ HTML `<ruby>漢<rt>かん</rt>字<rt>じ</rt></ruby>` 使用同一模型，`rt/r
 编译后的标注独立保存在 `flow.annotations`，双端原生排版预留上下空间。读音压缩在对应正文宽度内；建议按单字或读音单位建 ruby 节点。整组跨行时，只按正文字素数量比例分配读音，不推断语言学对应关系。暂不支持竖排、传统注音侧排、多层同侧 ruby，也不自动生成读音。
 
 示例提供中英界面和正文切换，并有中文、日文、横排注音、韩文、阿拉伯文、法文和英文的排版预设。语言、方向和断词按 flow 配置；法文不换行空格来自源文，系统换行和字形处理以平台结果为准。
+
+| 中文：拼音与着重号 | 日文：振假名与傍点 |
+| --- | --- |
+| <a href="./docs/images/android-cjk-pinyin.png"><img src="./docs/images/android-cjk-pinyin.png" width="320" alt="逐字拼音位于上方，圆点、空心圈和芝麻点位于下方。"></a> | <a href="./docs/images/android-cjk-furigana.png"><img src="./docs/images/android-cjk-furigana.png" width="320" alt="横排振假名与上方芝麻点着重号。"></a> |
+| 逐字拼音位于上方，圆点、空心圈和芝麻点位于下方。 | 横排振假名与上方芝麻点着重号。 |
 
 `isValidTextRange` 验证非空半开 UTF-16 范围，拒绝非法数值及拆开的代理对；它不承诺完整字素簇边界。`getRichTextSelectionText` 用附件的 `copyText` 替换选中的 U+FFFC，不改变原文偏移。`mapRichTextSelection` 返回源节点端点，生成的段落分隔符和列表编号不占真实源偏移。这里的源位置是解码后的语义节点位置，**不是原始 Markdown / HTML 字符串偏移**。
 
