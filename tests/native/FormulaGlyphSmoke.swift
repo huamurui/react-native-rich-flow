@@ -61,6 +61,43 @@ import AppKit
     let reference = root + #"<path d="M9 6h16v16H9z M47 11h4v4h-4z M30 18h8v8h-8z"/></svg>"#
     expectSamePixels(source, reference)
 
+    // Both styled 2×2 glyphs must occupy 6×6 pixels, including the offset use.
+    // The unstyled sibling keeps its independent translation and 2× scale.
+    let styled = root + ##"""
+      <defs><path id="tile" d="M1 1h2v2H1z"/></defs>
+      <use class="glyph" xlink:href="#tile" transform="scale(2)"/>
+      <g transform="translate(13 0)"><use class="glyph" x="2" y="1" xlink:href="#tile" transform="scale(2)"/></g>
+      <use x="2" y="1" xlink:href="#tile" transform="translate(34 5) scale(2)"/>
+      <style>.glyph { transform: scale(3) }</style>
+      </svg>
+      """##
+    let scaledTiles = root + #"<path d="M3 3h6v6H3z M22 6h6v6h-6z M40 9h4v4h-4z"/></svg>"#
+    expectSamePixels(styled, scaledTiles)
+    let cascade = styled
+      .replacingOccurrences(of: #"<use class="glyph" xlink"#, with: #"<use id="named" style="opacity:0.5;" class="glyph" xlink"#)
+      .replacingOccurrences(of: ".glyph { transform: scale(3) }", with: """
+        use.glyph { transform: scale(4) !important }
+        use.glyph { transform: scale(3) !important }
+        .glyph { transform: scale(5) !important }
+        #named { transform: scale(7) }
+        """)
+    let paintedTiles = root + #"<path d="M3 3h6v6H3z" opacity="0.5"/><path d="M22 6h6v6h-6z M40 9h4v4h-4z"/></svg>"#
+    precondition(mask(paintedTiles) != mask(scaledTiles), "The opacity reference must change the rendered pixels")
+    expectSamePixels(cascade, paintedTiles)
+
+    let pivoted = root + ##"""
+      <defs><path id="tile" d="M1 1h2v2H1z"/></defs>
+      <style>.glyph { transform: scale(3) }</style>
+      <use class="glyph" x="10" y="10" transform-origin="10px 10px" transform="scale(2)" xlink:href="#tile"/>
+      </svg>
+      """##
+    expectSamePixels(pivoted, root + #"<path d="M13 13h6v6h-6z"/></svg>"#)
+    for css in ["@media (min-width: 1px) { .glyph { transform: scale(3) } }", ".glyph { transform: var(--zoom) }"] {
+      guard let rules = FormulaGlyphStylesheet.read(from: root + "<style>\(css)</style></svg>"),
+            case .preserve = rules.transform(for: ["class": "glyph"]),
+            case .attribute = rules.transform(for: [:]) else { fatalError("Only the dependent glyph must retain its native CSS") }
+    }
+
     let shifted = root.replacingOccurrences(of: "0 0 64 32", with: "-8 -3 64 32")
     let origins = shifted + ##"""
       <defs>

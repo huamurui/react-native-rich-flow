@@ -101,8 +101,12 @@ placeholder, not locally typeset mathematics.
 
 For formula glyphs defined with SVG `<use>`, iOS preserves explicit two-axis
 `transform-origin` coordinates in user units or px with the default view-box.
-Relative origins, inline CSS transforms and other reference boxes stay on the
-original element and depend on the system SVG decoder.
+For static rules on type, ID and class selectors, including compounds and lists,
+a stylesheet scale of 3 overrides a glyph attribute scale of 2 and renders at 3×.
+The rewrite accounts for specificity, declaration order and `!important`.
+When a transform depends on a relative origin, inline style, conditional rule,
+complex selector or another reference box, the system SVG decoder handles the
+original element.
 
 The iOS podspec declares both `SDWebImage` and `SDWebImageSVGCoder` directly.
 Swift imports SDWebImage, and Expo autolinking enables modular headers for direct
@@ -126,6 +130,10 @@ height. Native generation and layout checks prevent superseded measurements
 and attachment results from being applied to a different flow.
 
 ## Verification
+
+With the example's CocoaPods installed and an iOS simulator booted, run
+`npm run test:native:ios-formula` to compare rendered glyphs against reference
+pixels through the production attachment loader.
 
 From the repository root:
 

@@ -15,6 +15,7 @@ xcrun swiftc \
 
 xcrun swiftc \
   -module-cache-path "$rich_flow_test_directory/cache" \
+  "$rich_flow_root/ios/FormulaGlyphStylesheet.swift" \
   "$rich_flow_root/ios/FormulaGlyphSVG.swift" \
   "$rich_flow_root/tests/native/FormulaGlyphSmoke.swift" \
   -o "$rich_flow_test_directory/formula-smoke"

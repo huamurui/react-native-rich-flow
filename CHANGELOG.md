@@ -10,7 +10,7 @@
 - Restore Android text selection when a selectable view is measured before its window attachment.
 - Refresh iOS accessibility paragraph labels after replacing the document.
 - Retry a failed remote image on iOS while its attachment stays visible, including during streaming updates.
-- Preserve transformed glyph references in pre-rendered iOS SVG formulas, including scaling around an explicit two-axis origin.
+- Preserve transformed glyph references in pre-rendered iOS SVG formulas, including scaling around an explicit two-axis origin. Static stylesheet transforms override a glyph's presentation transform once.
 - Give explicit empty paragraphs measurable line heights and preserve their semantic copy text.
 
 ## 0.1.0-alpha.0 — 2026-10-21

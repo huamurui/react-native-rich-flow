@@ -5,9 +5,14 @@ import Foundation
 final class FormulaGlyphSVG: NSObject, XMLParserDelegate {
   private var output = ""
   private var closingGroups: [String] = []
+  private let stylesheet: FormulaGlyphStylesheet?
+
+  private init(stylesheet: FormulaGlyphStylesheet?) {
+    self.stylesheet = stylesheet
+  }
 
   static func groupTransforms(in validatedMarkup: String) -> String? {
-    let writer = FormulaGlyphSVG()
+    let writer = FormulaGlyphSVG(stylesheet: FormulaGlyphStylesheet.read(from: validatedMarkup))
     let parser = XMLParser(data: Data(validatedMarkup.utf8))
     // Preserve qualified names and explicit xmlns attributes when writing.
     parser.shouldProcessNamespaces = false
@@ -23,20 +28,33 @@ final class FormulaGlyphSVG: NSObject, XMLParserDelegate {
     return value
   }
 
-  private func wrapperTransform(for attributes: [String: String]) -> String? {
+  private struct WrapperTransform {
+    let value: String
+    let fromCSS: Bool
+    var pivot: (x: Double, y: Double)?
+  }
+
+  private func wrapperTransform(for attributes: [String: String]) -> WrapperTransform? {
     let box = attributes["transform-box"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    guard let transform = attributes["transform"],
+    guard let attribute = attributes["transform"],
           attributes["style"]?.range(of: "transform", options: .caseInsensitive) == nil,
           box == nil || box == "view-box" else { return nil }
-    guard let origin = attributes["transform-origin"] else { return transform }
+
+    let transform: String
+    let fromCSS: Bool
+    switch stylesheet?.transform(for: attributes) ?? .attribute {
+    case .attribute: (transform, fromCSS) = (attribute, false)
+    case .stylesheet(let value): (transform, fromCSS) = (value, true)
+    case .preserve: return nil
+    }
+    let wrapper = WrapperTransform(value: transform, fromCSS: fromCSS)
+    guard let origin = attributes["transform-origin"] else { return wrapper }
     let axes = origin.split(whereSeparator: { $0.isWhitespace })
-    // A single value defaults the other axis to center. Relative lengths,
-    // keywords and other reference boxes need layout information.
+    // Relative origins need layout information from the SVG renderer.
     guard axes.count == 2, let x = absoluteLength(axes[0]), let y = absoluteLength(axes[1]) else { return nil }
-    if x == 0 && y == 0 { return transform }
-    // CoreSVG also ignores transform-origin on a group. Compose the actual
-    // pivot in user coordinates, preserving the order of the original list.
-    return "translate(\(x) \(y)) \(transform) translate(\(-x) \(-y))"
+    if (x == 0 && y == 0) || (fromCSS && transform.lowercased() == "none") { return wrapper }
+    if fromCSS { return WrapperTransform(value: transform, fromCSS: true, pivot: (x, y)) }
+    return WrapperTransform(value: "translate(\(x) \(y)) \(transform) translate(\(-x) \(-y))", fromCSS: false)
   }
 
   private func escaped(_ text: String, attribute: Bool = false) -> String {
@@ -66,10 +84,28 @@ final class FormulaGlyphSVG: NSObject, XMLParserDelegate {
       // CoreSVG can skip the transform on the referenced element itself too.
       // Keep the transform inside the named group for nested references.
       if let id = attributes.removeValue(forKey: "id") {
+        if transform.fromCSS { output += " style=\"transform:none!important\"" }
         output += " id=\"\(escaped(id, attribute: true))\"><\(group)"
         closing += "</\(group)>"
       }
-      output += " transform=\"\(escaped(transform, attribute: true))\">"
+      if transform.fromCSS {
+        // Keep pivot translations in SVG user units on separate groups. CoreSVG
+        // drops the glyph when they are mixed into the CSS transform list.
+        if let (x, y) = transform.pivot {
+          output += " transform=\"translate(\(x) \(y))\"><\(group)"
+          closing += "</\(group)>"
+        }
+        // The child still matches its original selectors for fill and other styles.
+        // Keep the reset first: CoreSVG stops at a leading empty CSS declaration.
+        attributes["style"] = "transform:none!important;" + (attributes["style"] ?? "")
+        output += " style=\"transform:\(escaped(transform.value, attribute: true))!important\">"
+        if let (x, y) = transform.pivot {
+          output += "<\(group) transform=\"translate(\(-x) \(-y))\">"
+          closing += "</\(group)>"
+        }
+      } else {
+        output += " transform=\"\(escaped(transform.value, attribute: true))\">"
+      }
     }
     closingGroups.append(closing)
     output += "<\(element)"
