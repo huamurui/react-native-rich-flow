@@ -13,9 +13,12 @@ internal fun richTextOffset(value: Any?): Int? {
   return number.takeIf { it.isFinite() && it >= 0 && it <= Int.MAX_VALUE && it % 1.0 == 0.0 }?.toInt()
 }
 
-internal fun validRichTextBoundary(offset: Int, text: String): Boolean =
+internal fun validRichTextBoundary(offset: Int, text: CharSequence): Boolean =
   offset >= 0 && offset <= text.length &&
     (offset == 0 || offset == text.length || !Character.isHighSurrogate(text[offset - 1]) || !Character.isLowSurrogate(text[offset]))
+
+internal fun hasSelectionInPrefix(text: CharSequence, anchor: Int, focus: Int, prefixLength: Int): Boolean =
+  maxOf(anchor, focus) <= prefixLength && validRichTextBoundary(anchor, text) && validRichTextBoundary(focus, text)
 
 internal fun richTextRange(start: Any?, end: Any?, text: String): TextRange? {
   val lower = richTextOffset(start) ?: return null

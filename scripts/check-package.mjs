@@ -17,7 +17,9 @@ try {
   const files = new Set(archive.files.map((file) => file.path));
   for (const required of ['LICENSE', 'expo-module.config.json', 'dist/esm/index.js', 'dist/cjs/index.js',
     'dist/esm/native/index.js', 'dist/esm/native/index.d.ts', 'dist/esm/adapters/index.js',
-    'android/build.gradle', 'android/src/main/java/com/richflow/text/RichFlowModule.kt', 'ios/RichFlow.podspec', 'ios/RichFlowModule.swift']) {
+    'android/build.gradle', 'android/src/main/java/com/richflow/text/RichFlowModule.kt', 'ios/RichFlow.podspec', 'ios/RichFlowModule.swift',
+    'android/src/main/java/com/richflow/text/RichFlowStreamModule.kt', 'ios/RichFlowStreamModule.swift',
+    'dist/esm/native/PlainTextStream.js', 'dist/cjs/native/PlainTextStream.js']) {
     assert.ok(files.has(required), `Missing published file: ${required}`);
   }
   for (const file of files) {

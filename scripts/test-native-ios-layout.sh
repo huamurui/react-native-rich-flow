@@ -38,3 +38,13 @@ xcrun --sdk iphonesimulator swiftc \
 # Optional SIMCTL_CHILD_RICH_FLOW_SMOKE_IMAGE=/absolute/path.png exports a preview;
 # SIMCTL_CHILD_RICH_FLOW_SMOKE_GUIDES=1 overlays the tested annotation bounds.
 xcrun simctl spawn "$rich_flow_device" "$rich_flow_test_directory/layout-smoke"
+
+xcrun --sdk iphonesimulator swiftc \
+  -target "$rich_flow_arch-apple-ios15.1-simulator" \
+  -sdk "$rich_flow_sdk" \
+  -module-cache-path "$rich_flow_test_directory/cache" \
+  "$rich_flow_root/ios/RichTextModels.swift" \
+  "$rich_flow_root/ios/RichFlowStreamTextView.swift" \
+  "$rich_flow_root/tests/native/UIKitStreamSmoke.swift" \
+  -o "$rich_flow_test_directory/stream-smoke"
+xcrun simctl spawn "$rich_flow_device" "$rich_flow_test_directory/stream-smoke"

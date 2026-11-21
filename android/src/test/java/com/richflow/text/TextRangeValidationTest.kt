@@ -17,6 +17,17 @@ class TextRangeValidationTest {
     assertEquals(TextRange(1, 3), richTextRange(1.0, 3.0, text))
   }
 
+  @Test fun appendingToAnEditableBufferCanInvalidateItsOldUtf16End() {
+    val text = StringBuilder("x\ud83d")
+    val previousEnd = text.length
+    assertTrue(hasSelectionInPrefix(text, previousEnd, 0, previousEnd))
+    text.append('\ude00').append(" tail")
+    assertFalse(hasSelectionInPrefix(text, previousEnd, 0, previousEnd))
+    assertFalse(hasSelectionInPrefix(text, 0, previousEnd, previousEnd))
+    assertTrue(hasSelectionInPrefix(text, 1, 0, previousEnd))
+    assertFalse(hasSelectionInPrefix(text, 0, 3, previousEnd))
+  }
+
   @Test fun copyReplacesOnlySelectedObjectReplacementCharacters() {
     val text = "甲😀\ufffc\n乙"
     val slots = listOf(RichTextCopySlot(TextRange(3, 4), "x²"), RichTextCopySlot(TextRange(0, 1), "bad"), RichTextCopySlot(TextRange(99, 100), "bad"))
