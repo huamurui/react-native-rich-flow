@@ -88,7 +88,7 @@ Use the React and React Native versions paired with your Expo SDK. The native en
 | Expo | React Native | React | Expo Modules Core | Coverage |
 | --- | --- | --- | --- | --- |
 | 55.0.31 | 0.83.10 | 19.2.0 | 55.0.26 | Playground baseline. iOS streaming copy/paste on iPhone SE and Android build/JVM tests. |
-| 54.0.38 | 0.81.5 | 19.1.0 | 3.0.30 | Unreleased compatibility for existing apps. Packed-consumer installation, Hermes streaming replay and native compilation. Device gestures are unverified on this SDK. |
+| 54.0.38 | 0.81.5 | 19.1.0 | 3.0.30 | Unreleased compatibility for existing apps. Packed-consumer install, Android build/JVM tests, and streaming Markdown Copy/Paste on an iOS simulator. Physical-device gestures are pending. |
 
 For SDK 54, use a tarball from this branch until an alpha containing the peer update is released. The published `0.1.0-alpha.0` requires Core 55. Earlier SDK 54 patches, SDK 53 and the Legacy Architecture are outside this validation. The pure model and adapters can run without native peers. [Validation details](./docs/validation.md#expo-sdk-54-compatibility) · [Expo SDK 54](https://expo.dev/changelog/sdk-54)
 

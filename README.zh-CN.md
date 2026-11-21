@@ -64,7 +64,7 @@ npm run example:ios
 | Expo | React Native | React | Expo Modules Core | 验证范围 |
 | --- | --- | --- | --- | --- |
 | 55.0.31 | 0.83.10 | 19.2.0 | 55.0.26 | 示例开发基线。iPhone SE 上验证了流式复制、粘贴，Android 已构建并通过 JVM 测试。 |
-| 54.0.38 | 0.81.5 | 19.1.0 | 3.0.30 | 供已有应用接入，尚未发布。已验证打包安装、Hermes 流式回放和原生编译；这组版本的设备手势待验。 |
+| 54.0.38 | 0.81.5 | 19.1.0 | 3.0.30 | 供已有应用接入，尚未发布。已验证打包安装、Android 构建与 JVM 测试，以及 iOS 模拟器上的流式 Markdown 复制粘贴。真机手势待验。 |
 
 SDK 54 目前请使用本分支生成的 tarball。npm 已发布的 `0.1.0-alpha.0` 要求 Core 55。SDK 54 的更早补丁、SDK 53 和旧架构均在本次验证范围之外。只使用数据模型和适配器时可以省去原生 peer。Node.js 版本以包的 `engines` 为准。[验证记录](./docs/validation.md#expo-sdk-54-compatibility) · [Expo SDK 54 版本说明](https://expo.dev/changelog/sdk-54)
 
