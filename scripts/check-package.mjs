@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +17,9 @@ try {
   const files = new Set(archive.files.map((file) => file.path));
   for (const required of ['LICENSE', 'expo-module.config.json', 'dist/esm/index.js', 'dist/cjs/index.js',
     'dist/esm/native/index.js', 'dist/esm/native/index.d.ts', 'dist/esm/adapters/index.js',
-    'android/build.gradle', 'android/src/main/java/com/richflow/text/RichFlowModule.kt', 'ios/RichFlow.podspec', 'ios/RichFlowModule.swift']) {
+    'android/build.gradle', 'android/src/main/java/com/richflow/text/RichFlowModule.kt', 'ios/RichFlow.podspec', 'ios/RichFlowModule.swift',
+    'android/src/main/java/com/richflow/text/RichFlowStreamModule.kt', 'ios/RichFlowStreamModule.swift',
+    'dist/esm/native/PlainTextStream.js', 'dist/cjs/native/PlainTextStream.js']) {
     assert.ok(files.has(required), `Missing published file: ${required}`);
   }
   for (const file of files) {
@@ -39,6 +41,8 @@ try {
   `], { cwd: temporary, stdio: 'inherit' });
   const installed = JSON.parse(readFileSync(join(temporary, 'node_modules/react-native-rich-flow/package.json'), 'utf8'));
   assert.equal(installed.license, 'MIT');
+  // CI can hand the exact archive that passed installation checks to the release job.
+  if (process.argv[2]) copyFileSync(join(temporary, archive.filename), process.argv[2]);
   console.log(`Verified ${archive.files.length} packed files and installed ESM/CommonJS core + adapter consumers.`);
 } finally {
   rmSync(temporary, { recursive: true, force: true });

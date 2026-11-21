@@ -30,25 +30,48 @@ struct RichTextFlow {
     )
   }
 
+  private struct CopySlot: Equatable {
+    let location: Int
+    let replacement: String
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+      lhs.location == rhs.location && lhs.replacement.utf16.elementsEqual(rhs.replacement.utf16)
+    }
+  }
+
+  private func copySlots(in range: NSRange) -> [CopySlot] {
+    var slots = attachments.compactMap { spec -> CopySlot? in
+      guard let r = richTextRange(spec, in: text), r.length == 1, text.character(at: r.location) == 0xfffc,
+            NSLocationInRange(r.location, range) else { return nil }
+      return CopySlot(location: r.location, replacement: spec["copyText"] as? String ?? spec["latex"] as? String ?? spec["alt"] as? String ?? "[图片]")
+    }
+    if let last = paragraphs.last, let blank = richTextEmptyParagraphRange(last, in: text),
+       text.character(at: blank.location) == 0x200b, NSLocationInRange(blank.location, range) {
+      slots.append(CopySlot(location: blank.location, replacement: ""))
+    }
+    return slots.sorted { $0.location < $1.location }
+  }
+
   func selectionText(_ range: NSRange) -> String? {
     guard validRichTextRange(range, in: text) else { return nil }
     var result = ""
     var cursor = range.location
-    let end = NSMaxRange(range)
-    let slots = attachments.compactMap { spec -> (NSRange, String)? in
-      guard let slot = richTextRange(spec, in: text), slot.length == 1,
-            text.character(at: slot.location) == 0xfffc,
-            slot.location >= range.location, NSMaxRange(slot) <= end else { return nil }
-      return (slot, spec["copyText"] as? String ?? spec["latex"] as? String ?? spec["alt"] as? String ?? "[图片]")
-    }.sorted { $0.0.location < $1.0.location }
-    for (slot, replacement) in slots where slot.location >= cursor {
+    for slot in copySlots(in: range) where slot.location >= cursor {
       result += text.substring(with: NSRange(location: cursor, length: slot.location - cursor))
-      result += replacement
-      cursor = NSMaxRange(slot)
+      result += slot.replacement
+      cursor = slot.location + 1
     }
-    result += text.substring(with: NSRange(location: cursor, length: end - cursor))
+    result += text.substring(with: NSRange(location: cursor, length: NSMaxRange(range) - cursor))
     return result
   }
+
+  func preservesSelection(_ range: NSRange, from previous: RichTextFlow, commonTextLength: Int) -> Bool {
+    guard id == previous.id, validRichTextRange(range, in: previous.text),
+          validRichTextRange(range, in: text), NSMaxRange(range) <= commonTextLength else { return false }
+    let prefix = NSRange(location: 0, length: NSMaxRange(range))
+    return copySlots(in: prefix) == previous.copySlots(in: prefix)
+  }
+
 }
 
 func richTextNumber(_ value: Any?, fallback: Double) -> Double {
@@ -83,6 +106,14 @@ func richTextRange(_ spec: RichTextSpec, in text: NSString) -> NSRange? {
         end > start, end <= text.length else { return nil }
   let range = NSRange(location: start, length: end - start)
   return validRichTextRange(range, in: text) ? range : nil
+}
+
+func richTextEmptyParagraphRange(_ spec: RichTextSpec, in text: NSString) -> NSRange? {
+  guard let flag = spec["emptyLine"] as? NSNumber, CFGetTypeID(flag) == CFBooleanGetTypeID(), flag.boolValue,
+        let range = richTextRange(spec, in: text), range.length == 1,
+        range.location == 0 || text.character(at: range.location - 1) == 10 else { return nil }
+  let unit = text.character(at: range.location)
+  return unit == 10 || (unit == 0x200b && NSMaxRange(range) == text.length) ? range : nil
 }
 
 /** Drawing metadata only: annotation characters never enter the selectable buffer. */

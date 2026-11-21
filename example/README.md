@@ -21,6 +21,8 @@ npm run example:start
 
 iOS requires Xcode and CocoaPods. Android requires JDK 17, the Android SDK, and a device or emulator. Rerun the platform build after changing native code; Fast Refresh updates JavaScript only.
 
+During prebuild, the playground adds a CocoaPods hook that raises SDWebImage’s privacy resource bundle to the app’s iOS deployment target when its declared minimum is older. This lets the generated workspace build with Xcode 27. To update an existing generated project, run `npm run prebuild --workspace example -- --platform ios` from the repository root, then run `pod install` in `example/ios`.
+
 ## Languages
 
 The **English / 中文** button in the header switches the UI, accessibility labels, case descriptions, rendered content, and default Markdown/HTML examples. On first launch, the device’s `Intl` locale selects Simplified Chinese for `zh` locales; all other locales, or unavailable locale detection, fall back to English. Switching lasts for the current app session and does not change the system language.
@@ -31,6 +33,8 @@ Markdown and HTML drafts and applied content are kept separately for each langua
 
 | Case | Try this | Check |
 | --- | --- | --- |
+| Streaming Markdown | Select the opening sentence of the birding answer while the Python block grows, choose Copy, and paste above the document | The same selected text is copied as open Markdown delimiters resolve. Start, pause, resume and restart work offline. |
+| Streaming | Tap Start, select the first sentence, choose system Copy, then paste into Paste to check | The count advances while the selection stays on the original text. Pause and resume continue the same message. Restart begins a new one. |
 | Selection | Drag from one paragraph into the next; select an emoji | One flow supports selection across paragraphs; events use UTF-16; source mapping matches selected nodes |
 | Typography | Change font size, alignment and theme | Nested styles, headings, quotes, lists and code remain visible without clipping |
 | Decorations | Tap each decoration, then select across wrapped lines | Decoration action ids; solid, dashed, dotted and wavy lines follow layout |
@@ -39,6 +43,8 @@ Markdown and HTML drafts and applied content are kept separately for each langua
 | Long document | Scroll to the end, then return | Attachments recover; the text remains in one selection context |
 | Local typography | Switch Chinese/Pinyin, Japanese/Furigana, horizontal Zhuyin, Korean, Arabic/RTL, French or English | Emphasis/ruby keep base text copyable; Start/End alignment follows direction; language and hyphenation are platform hints |
 | Markdown / HTML | Edit the input and apply it | Adapters produce a neutral document rendered by the same native component |
+
+The streaming Markdown case replays a Python answer in about nine seconds. The first sentence stays available while the rest arrives in uneven batches. [Watch the iOS Copy and Paste recording](../docs/images/streaming-markdown-ios.gif) · [Physical SE3 result](../docs/images/streaming-markdown-se3-paste.png)
 
 The bottom event panel never covers the document. Expand it to inspect selected text, source mapping, content versions and recent actions. Link actions are recorded without opening a browser automatically; real host apps choose how to handle them.
 

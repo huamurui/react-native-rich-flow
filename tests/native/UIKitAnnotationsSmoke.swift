@@ -156,7 +156,70 @@ struct UIKitAnnotationsSmoke {
     withExtendedLifetime(raisedStorage) {}
   }
 
-  static func main() throws {
+  @MainActor static func verifyMarkdownUpdates() {
+    func flow(_ text: String, version: String, attachments: [RichTextSpec] = [], paragraphs: [RichTextSpec] = []) -> RichTextFlow {
+      RichTextFlow(id: "message", textVersion: version, text: text as NSString, spans: [], paragraphs: paragraphs,
+                   decorations: [], annotations: [], attachments: attachments)
+    }
+    let live = NSTextStorage()
+    let manager = RichTextLayoutManager()
+    let container = NSTextContainer(size: CGSize(width: 180, height: 600))
+    live.addLayoutManager(manager)
+    manager.addTextContainer(container)
+    let view = FlowTextView(frame: .zero, textContainer: container)
+    view.isEditable = false
+    view.isSelectable = true
+    let font = UIFont.systemFont(ofSize: 18)
+    let bold = UIFont.boldSystemFont(ofSize: 18)
+    let oldFlow = flow("Copy 🙂\ncode", version: "1")
+    let nextFlow = flow("Copy 🙂\ncode\nnext", version: "2")
+    let old = NSAttributedString(string: oldFlow.text as String, attributes: [.font: font])
+    let next = NSMutableAttributedString(string: nextFlow.text as String, attributes: [.font: font])
+    let code = oldFlow.text.range(of: "code")
+    next.addAttribute(.font, value: bold, range: code)
+    live.setAttributedString(old)
+    // This marker is deliberately absent from both reference snapshots.
+    let marker = NSAttributedString.Key("existing-unaffected-run")
+    live.addAttribute(marker, value: true, range: NSRange(location: 0, length: 4))
+    view.selectedRange = code
+    applyRichTextSnapshot(to: view, selection: view.selectedRange, previous: oldFlow, previousContent: old, next: nextFlow, content: next)
+    expect(view.textStorage === live && live.string == next.string, "A Markdown append mutates the same live storage")
+    expect(live.attribute(marker, at: 0, effectiveRange: nil) != nil, "The unchanged prefix's attributed run survives")
+    expect((live.attribute(.font, at: code.location, effectiveRange: nil) as? UIFont) == bold, "Reinterpreted inline markup updates existing glyph attributes")
+    expect(view.selectedRange == code && nextFlow.selectionText(view.selectedRange) == "code", "A style-only change preserves system selection and copy")
+    let revision = flow("Copy 🙃\nother", version: "3")
+    let selectedEmoji = (next.string as NSString).range(of: "🙂")
+    view.selectedRange = selectedEmoji
+    let replacement = NSAttributedString(string: revision.text as String, attributes: [.font: font])
+    applyRichTextSnapshot(to: view, selection: view.selectedRange, previous: nextFlow, previousContent: next, next: revision, content: replacement)
+    expect(live.string == revision.text as String && view.selectedRange.length == 0, "Correction at a shared high surrogate replaces the scalar and clears its selection")
+    let attachment = ["start": 0, "end": 1, "copyText": "a"] as RichTextSpec
+    let prior = flow("\u{fffc} Note", version: "4", attachments: [attachment])
+    let changed = flow("\u{fffc} Note", version: "5", attachments: [["start": 0, "end": 1, "copyText": "b"]])
+    let unchanged = flow("\u{fffc} Note!", version: "6", attachments: [attachment])
+    let note = prior.text.range(of: "Note")
+    expect(!changed.preservesSelection(note, from: prior, commonTextLength: prior.text.length), "Changed attachment semantics before the selection invalidate its source offsets")
+    expect(unchanged.preservesSelection(note, from: prior, commonTextLength: prior.text.length), "Stable attachment semantics preserve the later selection")
+    let blank = flow("\u{200b}", version: "7", paragraphs: [["start": 0, "end": 1, "emptyLine": true]])
+    let literal = flow("\u{200b}", version: "8")
+    expect(!literal.preservesSelection(NSRange(location: 0, length: 1), from: blank, commonTextLength: 1), "A synthetic anchor becoming literal changes system copy")
+  }
+
+  @MainActor static func main() throws {
+    verifyMarkdownUpdates()
+    let (blankStorage, blankManager, blankContainer) = layout("\nBody\n\u{200b}", width: 240, annotations: [])
+    for start in [0, blankStorage.length - 1] {
+      let spec: RichTextSpec = ["start": start, "end": start + 1, "emptyLine": true, "lineHeight": 10]
+      let range = richTextEmptyParagraphRange(spec, in: blankStorage.string as NSString)!
+      let style = NSMutableParagraphStyle()
+      let font = RichTextConfig().configureEmptyParagraph(style, spec: spec, font: .systemFont(ofSize: 20), scale: 1)
+      blankStorage.addAttributes([.font: font, .paragraphStyle: style], range: range)
+    }
+    blankManager.ensureLayout(for: blankContainer)
+    let blankRects = lineRects(blankManager, blankContainer)
+    expect(blankRects.count == 3, "Leading and terminal blanks are both measurable")
+    expect(blankRects[0].fragment.height == 10 && blankRects[2].fragment.height == 10, "Each explicit blank receives its own height")
+    expect(blankRects[1].fragment.height >= 28, "Compact blank lines preserve the body line height")
     verifyReusableLineSpace()
     let text = "漢字仮名交錯文章"
     let range: RichTextSpec = ["start": 0, "end": (text as NSString).length]

@@ -8,11 +8,18 @@ import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
+import android.os.Bundle
 import android.os.SystemClock
+import android.text.Selection
+import android.text.Spannable
+import android.view.ActionMode
 import android.view.GestureDetector
 import android.view.InputDevice
+import android.view.Menu
+import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.ViewConfiguration
+import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.TextView
 import org.json.JSONObject
 import kotlin.math.abs
@@ -46,6 +53,8 @@ internal class FlowTextView(context: Context) : TextView(context) {
   private var hostOwnsTouch = false
   private var hostTouchCancelled = false
   private var nativeSelectionStarted = false
+  private var updatingText = false
+  private var restoreSystemMenu = false
   private val readingGestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
     override fun onDown(event: MotionEvent): Boolean = true
 
@@ -69,13 +78,71 @@ internal class FlowTextView(context: Context) : TextView(context) {
     setPadding(0, 0, 0, 0)
     includeFontPadding = false
     setTextIsSelectable(true)
+    customSelectionActionModeCallback = object : ActionMode.Callback {
+      override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+        restoreSystemMenu = true
+        return true
+      }
+      override fun onDestroyActionMode(mode: ActionMode) {
+        if (!updatingText) restoreSystemMenu = false
+      }
+      override fun onPrepareActionMode(mode: ActionMode, menu: Menu) = false
+      override fun onActionItemClicked(mode: ActionMode, item: MenuItem) = false
+    }
     isClickable = true
     ready = true
   }
 
   override fun onSelectionChanged(selStart: Int, selEnd: Int) {
     super.onSelectionChanged(selStart, selEnd)
+    if (!updatingText && (selStart < 0 || selEnd < 0 || selStart == selEnd)) restoreSystemMenu = false
     if (ready) selectionListener?.invoke(selStart, selEnd)
+  }
+
+  fun setStyledSnapshot(next: FlowData, styled: Spannable, preserveSelection: Boolean) {
+    val previous = flow
+    flow = next
+    updateTextSelection(preserveSelection) { anchor, focus ->
+      val restore = when {
+        previous == null || previous.id != next.id || anchor < 0 || focus < 0 -> false
+        !preserveSelection || previous === next -> previous.textVersion == next.textVersion
+        else -> isTextSelectable && previous.hasSameSelectionPrefix(next, anchor, focus)
+      }
+      // Even identical text can acquire heading metrics, emphasis or code spans.
+      setText(styled, BufferType.SPANNABLE)
+      restore
+    }
+  }
+
+  /** The update returns whether the old offsets still refer to the same selection. */
+  fun updateTextSelection(preserveMenu: Boolean, update: (anchor: Int, focus: Int) -> Boolean) {
+    val anchor = selectionStart
+    val focus = selectionEnd
+    val hadMenu = preserveMenu && restoreSystemMenu && hasWindowFocus() && isFocused
+    updatingText = true
+    try {
+      val restore = update(anchor, focus)
+      val buffer = text as Spannable
+      if (restore && hadMenu) {
+        // Android ends its contextual action mode for both setText and editable mutations. The public
+        // selection action restores Android's handles and native Copy menu.
+        if (hasSelection()) Selection.removeSelection(buffer)
+        val range = Bundle().apply {
+          putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, min(anchor, focus))
+          putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, max(anchor, focus))
+        }
+        restoreSystemMenu = performAccessibilityAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, range)
+      } else {
+        restoreSystemMenu = false
+      }
+      if (restore && (selectionStart != anchor || selectionEnd != focus)) {
+        Selection.setSelection(buffer, anchor.coerceAtMost(buffer.length), focus.coerceAtMost(buffer.length))
+      } else if (!restore && preserveMenu && (selectionStart >= 0 || selectionEnd >= 0)) {
+        Selection.removeSelection(buffer)
+      }
+    } finally {
+      updatingText = false
+    }
   }
 
   override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -166,7 +233,19 @@ internal class FlowTextView(context: Context) : TextView(context) {
     }
   }
 
+  override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+    if (layout != null && isTextSelectable) {
+      // A layout measured while detached can leave TextView's selection handles
+      // disabled. Refresh the Editor's controllers without replacing its buffer.
+      val originalVisibility = isCursorVisible
+      isCursorVisible = !originalVisibility
+      isCursorVisible = originalVisibility
+    }
+  }
+
   override fun onDetachedFromWindow() {
+    restoreSystemMenu = false
     cancelReadingGesture()
     hostOwnsTouch = false
     hostTouchCancelled = false

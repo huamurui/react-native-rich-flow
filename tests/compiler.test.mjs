@@ -111,6 +111,28 @@ test('empty list items and empty paragraphs keep intentional line boundaries', (
   assert.equal(getRichTextSelectionText(flow, 0, flow.text.length), flow.text);
 });
 
+test('explicit empty paragraphs are measurable, with no layout-only character in copied text', () => {
+  assert.equal(compileDocument(document([])).text, '');
+  const lone = compileDocument(document([paragraph('only', [])]));
+  assert.equal(lone.paragraphs[0].emptyLine, true);
+  assert.ok(isValidTextRange(lone.text, lone.paragraphs[0].start, lone.paragraphs[0].end));
+  assert.equal(getRichTextSelectionText(lone, 0, lone.text.length), '');
+  assert.equal(mapRichTextSelection(lone, 0, lone.text.length), null);
+
+  const flow = compileDocument(document([
+    paragraph('before', []), paragraph('body', [text('real', '😀\u200b')]),
+    paragraph('between', []), paragraph('last', []),
+  ]), { emptyParagraphHeight: 9 });
+  assert.deepEqual(flow.paragraphs.filter(p => p.emptyLine).map(p => [p.start, p.end, p.lineHeight]), [
+    [0, 1, 9], [5, 6, 9], [6, 7, 9],
+  ]);
+  assert.equal(getRichTextSelectionText(flow, 0, 7), '\n😀\u200b\n\n');
+  assert.deepEqual(mapRichTextSelection(flow, 0, 7).end, { nodeId: 'real', paragraphId: 'body', offset: 3 });
+  assert.equal(mapRichTextSelection(flow, 2, 7), null);
+  const authored = compileDocument(document([paragraph('p', [text('zero', '\u200b')])]));
+  assert.equal(getRichTextSelectionText(authored, 0, 1), '\u200b');
+});
+
 test('headings, quotes, code and explicit breaks share a continuous selectable flow', () => {
   const flow = compileDocument(document([
     { id: 'heading', type: 'heading', level: 2, children: [text('h', 'Heading')] },

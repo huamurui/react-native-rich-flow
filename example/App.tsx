@@ -23,6 +23,8 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { compileDocument } from 'react-native-rich-flow';
 import { parseHtml, parseMarkdown } from 'react-native-rich-flow/adapters';
 import { isRichFlowAvailable, RichFlow } from 'react-native-rich-flow/native';
+import { MarkdownStreamingDemo } from './src/MarkdownStreamingDemo';
+import { StreamingDemo } from './src/StreamingDemo';
 import { type CaseId, createCaseFlow, getCases } from './src/cases';
 import { format, getInitialLocale, translations } from './src/i18n';
 import { createInitialSources, INITIAL_SOURCES, updateSource } from './src/sources';
@@ -54,6 +56,7 @@ function Playground() {
   const cases = getCases(locale);
   const [dark, setDark] = useState(systemScheme === 'dark');
   const palette = dark ? DARK : LIGHT;
+  const [screen, setScreen] = useState<'markdown-stream' | 'plain-stream' | 'cases'>('markdown-stream');
   const [caseId, setCaseId] = useState<CaseId>('selection');
   const [fontSize, setFontSize] = useState(17);
   const [alignment, setAlignment] = useState<Alignment>('left');
@@ -186,9 +189,13 @@ function Playground() {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.caseList} style={styles.caseBar}>
-          {cases.map((item) => chip(item.title, caseId === item.id, () => setCaseId(item.id)))}
+          {chip(locale === 'en' ? 'Streaming Markdown' : '流式 Markdown', screen === 'markdown-stream', () => setScreen('markdown-stream'))}
+          {chip(locale === 'en' ? 'Streaming' : '流式追加', screen === 'plain-stream', () => setScreen('plain-stream'))}
+          {cases.map((item) => chip(item.title, screen === 'cases' && caseId === item.id, () => { setScreen('cases'); setCaseId(item.id); }))}
         </ScrollView>
 
+        {screen === 'markdown-stream' ? <MarkdownStreamingDemo key={locale} locale={locale} palette={palette} />
+        : screen === 'plain-stream' ? <StreamingDemo key={locale} locale={locale} palette={palette} /> : <>
         <ScrollView ref={scroll} style={styles.main} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
           {!nativeAvailable && (
             <View accessibilityRole="alert" style={[styles.notice, { backgroundColor: palette.warningBackground }]}>
@@ -345,6 +352,7 @@ function Playground() {
             </ScrollView>
           )}
         </View>
+        </>}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

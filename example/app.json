@@ -13,6 +13,6 @@
     "android": {
       "package": "com.richflow.example"
     },
-    "plugins": ["expo-dev-client"]
+    "plugins": ["expo-dev-client", "./plugins/withPlaygroundScene.cjs"]
   }
 }

@@ -147,6 +147,8 @@ export interface CompileOptions {
   readonly fontSize?: number;
   readonly lineHeight?: number;
   readonly paragraphSpacing?: number;
+  /** Height of an explicit empty paragraph, in logical units. Defaults to lineHeight. */
+  readonly emptyParagraphHeight?: number;
   readonly indentSize?: number;
   /** Optional caller-managed revision; otherwise derived from the compiled flow. */
   readonly textVersion?: string;

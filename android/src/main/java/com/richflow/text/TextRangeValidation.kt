@@ -13,9 +13,12 @@ internal fun richTextOffset(value: Any?): Int? {
   return number.takeIf { it.isFinite() && it >= 0 && it <= Int.MAX_VALUE && it % 1.0 == 0.0 }?.toInt()
 }
 
-internal fun validRichTextBoundary(offset: Int, text: String): Boolean =
+internal fun validRichTextBoundary(offset: Int, text: CharSequence): Boolean =
   offset >= 0 && offset <= text.length &&
     (offset == 0 || offset == text.length || !Character.isHighSurrogate(text[offset - 1]) || !Character.isLowSurrogate(text[offset]))
+
+internal fun hasSelectionInPrefix(text: CharSequence, anchor: Int, focus: Int, prefixLength: Int): Boolean =
+  maxOf(anchor, focus) <= prefixLength && validRichTextBoundary(anchor, text) && validRichTextBoundary(focus, text)
 
 internal fun richTextRange(start: Any?, end: Any?, text: String): TextRange? {
   val lower = richTextOffset(start) ?: return null
@@ -25,15 +28,31 @@ internal fun richTextRange(start: Any?, end: Any?, text: String): TextRange? {
 
 internal data class RichTextCopySlot(val range: TextRange, val text: String)
 
-internal fun richTextSelectionText(text: String, start: Int, end: Int, slots: List<RichTextCopySlot>): String? {
+/** The raw prefix was matched separately. Its placeholders must still copy identically at each offset. */
+internal data class RichTextCopySemantics(val slots: List<RichTextCopySlot>, val terminalAnchor: TextRange?) {
+  fun matchesThrough(end: Int, other: RichTextCopySemantics): Boolean =
+    (terminalAnchor?.end == end) == (other.terminalAnchor?.end == end) &&
+      slots.takeWhile { it.range.start < end } == other.slots.takeWhile { it.range.start < end }
+}
+
+internal fun isEmptyParagraphRange(text: String, range: TextRange): Boolean =
+  range.start in text.indices && range.end == range.start + 1 &&
+    (range.start == 0 || text[range.start - 1] == '\n') &&
+    (text[range.start] == '\n' || (range.end == text.length && text[range.start] == '\u200b'))
+
+internal fun richTextSelectionText(
+  text: String, start: Int, end: Int, slots: List<RichTextCopySlot>, lastEmptyParagraph: TextRange? = null
+): String? {
   val selection = richTextRange(start, end, text) ?: return null
+  val copyEnd = if (end == text.length && lastEmptyParagraph?.end == end &&
+    isEmptyParagraphRange(text, lastEmptyParagraph) && text[end - 1] == '\u200b') end - 1 else end
   val result = StringBuilder()
   var cursor = selection.start
   for (slot in slots.sortedBy { it.range.start }) {
     val range = richTextRange(slot.range.start, slot.range.end, text) ?: continue
-    if (range.end - range.start != 1 || text[range.start] != '\ufffc' || range.start < cursor || range.end > selection.end) continue
+    if (range.end - range.start != 1 || text[range.start] != '\ufffc' || range.start < cursor || range.end > copyEnd) continue
     result.append(text.substring(cursor, range.start)).append(slot.text)
     cursor = range.end
   }
-  return result.append(text.substring(cursor, selection.end)).toString()
+  return result.append(text.substring(cursor, copyEnd)).toString()
 }

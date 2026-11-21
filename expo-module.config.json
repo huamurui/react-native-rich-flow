@@ -5,12 +5,14 @@
   ],
   "apple": {
     "modules": [
-      "RichFlowModule"
+      "RichFlowModule",
+      "RichFlowStreamModule"
     ]
   },
   "android": {
     "modules": [
-      "com.richflow.text.RichFlowModule"
+      "com.richflow.text.RichFlowModule",
+      "com.richflow.text.RichFlowStreamModule"
     ]
   }
 }

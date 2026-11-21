@@ -62,6 +62,20 @@ class InlineBackgroundRenderingTest {
     return layout(text)
   }
 
+  @Test fun explicitBlankParagraphsOwnOneMeasurableLineWithoutShrinkingNeighboringText() {
+    val text = SpannableString("\nBody\n\u200b")
+    text.setSpan(ParagraphHeightSpan(TextRange(0, text.length), 52, 0, 0), 0, text.length,
+      Spanned.SPAN_EXCLUSIVE_EXCLUSIVE or (1 shl Spanned.SPAN_PRIORITY_SHIFT))
+    for (start in listOf(0, text.length - 1)) {
+      val range = TextRange(start, start + 1)
+      text.span(EmptyParagraphHeightSpan(range, 10), range.start, range.end)
+    }
+    val measured = layout(text)
+    assertEquals(3, measured.lineCount)
+    for (index in listOf(0, 2)) assertEquals(10, measured.getLineBottom(index) - measured.getLineTop(index))
+    assertTrue(measured.getLineBottom(1) - measured.getLineTop(1) >= 52)
+  }
+
   @Test fun paragraphGapMovesTheNextParagraphWithoutExtendingCharacterBackground() {
     val ordinary = paragraph(0)
     val spaced = paragraph(80)

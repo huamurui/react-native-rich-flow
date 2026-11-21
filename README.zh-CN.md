@@ -14,7 +14,7 @@ React Native 原生连续富文本组件：用一份文字缓冲区承载段落�
 
 RichFlow 面向阅读器和内容渲染器的底层能力。应用提供中立文档或编译后的 flow，再自行处理链接、菜单和业务动作。仓库也提供 Markdown / HTML 适配器，它们输出同一份文档模型。
 
-**0.1.0-alpha.0 是原生渲染器的早期预览版。** 0.0.1 只有数据模型和选区工具，不包含下文的原生组件。此 alpha 用于接入试用，稳定版前 API 与平台行为仍可能调整。仓库不会自动发布 npm。
+**0.1.0-alpha.0 是原生渲染器的早期预览版。** 0.0.1 只有数据模型和选区工具，不包含下文的原生组件。此 alpha 用于接入试用，稳定版前 API 与平台行为仍可能调整。维护者可在 GitHub Actions 预览打包结果，再把 alpha 候选版暂存到 npm，经人工批准后上线。[发布说明](https://github.com/huamurui/react-native-rich-flow/blob/main/PUBLISHING.md)
 
 ## 运行完整示例
 
@@ -32,7 +32,7 @@ npm run example:ios
 
 **Expo Go 不能加载本库。** 需要包含 RichFlow 原生模块的[开发构建](https://docs.expo.dev/develop/development-builds/introduction/)。Web 和缺少模块的客户端只显示 `fallback` 或安装提示，不提供等价的浏览器渲染器。
 
-示例有九个入口：跨段选择、文字排版、装饰与点击、内联附件、动态更新、长文滚动、Markdown、HTML、当地排版。支持中英界面和正文切换；可以调整字号、对齐、主题和选择开关，查看 UTF-16 选区、源节点映射与动作事件，并把系统复制的内容粘贴到检查框。图片与预渲染公式 SVG 均为内置 data URL。操作清单见[示例指南](./example/README.zh-CN.md)。
+示例有十一个入口，包括流式 Markdown、纯文本流式追加、跨段选择、文字排版、装饰与点击、内联附件、动态更新、长文滚动、Markdown、HTML、当地排版。支持中英界面和正文切换；可以调整字号、对齐、主题和选择开关，查看 UTF-16 选区、源节点映射与动作事件，并把系统复制的内容粘贴到检查框。图片与预渲染公式 SVG 均为内置 data URL。操作清单见[示例指南](./example/README.zh-CN.md)。
 
 ## 已实现的能力
 
@@ -48,6 +48,7 @@ npm run example:ios
 | 语义复制、源节点映射 | 原生复制 + JS 映射 | 原生复制 + JS 映射 | UTF-16 语义偏移 |
 | 异步附件加载与高度更新 | 已实现 | 已实现 | 首次加载后可能重新布局 |
 | Markdown / HTML 输入 | 共享适配器 | 共享适配器 | 常用语义子集 |
+| 流式 Markdown 中保留前文选区（尚未发布） | 已实现，待设备验收 | iPhone SE 第三代已验证 | 每条消息使用同一个原生视图 |
 
 以下为仓库示例在 Android 16（vivo V2509A）上的浅色主题实机截图，点击可查看原图。[截图说明](./docs/images/README.md)。
 
@@ -58,16 +59,25 @@ npm run example:ios
 
 ## 接入自己的应用
 
-开发基线为 Expo SDK 55、Expo Modules Core 55、React 19.2 和 React Native 0.83.10。peer 版本范围不等于所有版本都经过验证。Node.js 版本以包的 `engines` 为准。
+使用 Expo SDK 配套的 React 与 React Native。原生入口验证过以下新架构宿主。
 
-已有的裸 React Native 工程需要先按对应 RN / Expo 版本[安装并配置 Expo Modules](https://docs.expo.dev/bare/installing-expo-modules/)。安装时使用 `npm install react-native-rich-flow@0.1.0-alpha.0`，或用 `react-native-rich-flow@alpha` 跟随 alpha 渠道。测试本地改动时可以使用压缩包：
+| Expo | React Native | React | Expo Modules Core | 验证范围 |
+| --- | --- | --- | --- | --- |
+| 55.0.31 | 0.83.10 | 19.2.0 | 55.0.26 | 示例开发基线。iPhone SE 上验证了流式复制、粘贴，Android 已构建并通过 JVM 测试。 |
+| 54.0.38 | 0.81.5 | 19.1.0 | 3.0.30 | 供已有应用接入，尚未发布。已验证打包安装、Android 构建与 JVM 测试，以及 iOS 模拟器上的流式 Markdown 复制粘贴。真机手势待验。 |
+
+SDK 54 目前请使用本分支生成的 tarball。npm 已发布的 `0.1.0-alpha.0` 要求 Core 55。SDK 54 的更早补丁、SDK 53 和旧架构均在本次验证范围之外。只使用数据模型和适配器时可以省去原生 peer。Node.js 版本以包的 `engines` 为准。[验证记录](./docs/validation.md#expo-sdk-54-compatibility) · [Expo SDK 54 版本说明](https://expo.dev/changelog/sdk-54)
+
+使用 Xcode 27 和 SDWebImage 5.21.7 构建时，需要将 SDWebImage 隐私资源 bundle 的最低 iOS 版本设为宿主的最低版本。[示例构建说明](https://github.com/huamurui/react-native-rich-flow/blob/main/example/README.md)
+
+已有的裸 React Native 工程需要先按对应 RN / Expo 版本[安装并配置 Expo Modules](https://docs.expo.dev/bare/installing-expo-modules/)。SDK 55 可安装已发布的 `react-native-rich-flow@0.1.0-alpha.0`，或用 `react-native-rich-flow@alpha` 跟随 alpha 渠道。SDK 54 或测试未发布功能时，请先打包本地工作树。
 
 ```bash
 # 在库仓库中：
 npm pack
 
 # 在已经配置 Expo Modules 的同级应用中：
-npm install ../react-native-rich-flow/react-native-rich-flow-0.1.0-alpha.0.tgz
+npm install ../react-native-rich-flow/react-native-rich-flow-0.1.0-alpha.1.tgz
 npx expo run:android
 # 或 npx expo run:ios
 ```
@@ -126,6 +136,42 @@ export default function Reader() {
 
 组件自动测量可用宽度和正文高度，需要放在具有确定可用宽度的容器中。空 flow 的正文高度为零。组件不内部滚动，示例由外层 `ScrollView` 承担滚动。
 
+## 流式 Markdown（尚未发布）
+
+打开「流式 Markdown」并点「开始」。观鸟笔记示例会分批生成加粗说明、Python 代码块和列表。第一句在播放前就可选中，等代码块开始排版时点系统「复制」，再到「粘贴核对」中查看结果。
+
+<img src="./docs/images/streaming-markdown-ios.gif" width="340" alt="长按选中「观测」后，Python 代码块继续生成。点击系统复制，再粘贴，输入框得到「观测」。">
+
+动图录自 iOS 18.4 模拟器。iPhone SE 第三代（iOS 27.2）上，粗体和代码块出现后，复制先前选中的「Group bird sightings」，粘贴结果逐字一致。[SE3 生成中的选区](./docs/images/streaming-markdown-se3-selection.png) · [SE3 粘贴结果](./docs/images/streaming-markdown-se3-paste.png)
+
+接入时，按消息累积 Markdown，为同一条回答保留固定 ID，让一个持续挂载的原生视图接收新版本。
+
+```tsx
+const flow = useMemo(() => compileDocument(
+  parseMarkdown(markdownSoFar, { id: messageId }), metrics
+), [markdownSoFar, messageId, metrics]);
+
+return <RichFlow flow={flow} config={metrics} preserveSelectionOnUpdate />;
+```
+
+开启 `preserveSelectionOnUpdate` 后，若从开头到选区末尾的文字和附件等内容的复制语义都保持一致，原生视图可保留该选区。改写前文使范围失效，或切换消息 ID 时会清除选区。示例每批都重新解析并编译当前全文，因此后到的闭合标记可以改变先前的格式，解析开销也随全文长度增长。
+
+示例离线回放 UTF-8 SSE 字节流，按 OpenAI Responses 的 `response.output_text.delta`、`response.output_text.done` 和 `response.completed` 事件读取一条回答。其他服务可以把自己的文本增量送进同一渲染接口。[WHATWG 事件流格式](https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation) · [OpenAI Responses 流事件](https://developers.openai.com/api/reference/resources/responses/streaming-events)
+
+## 纯文本流式追加原型（尚未发布）
+
+用当前源码构建示例，打开「流式追加」并点「开始」。生成过程中长按第一句，拖动选区，点系统「复制」，再到「粘贴核对」中粘贴。示例在设备上生成文字，阅读位置由读者控制。
+
+```tsx
+import { PlainTextStream } from 'react-native-rich-flow/native';
+
+<PlainTextStream documentId={message.id} text={message.textSoFar} />
+```
+
+传入同一条消息的稳定 ID 和至今收到的完整纯文本。组件按动画帧合并更新，在原生文字缓冲区追加新内容，并保留未改动前文中的选区。遗漏更新或替换已有内容时会通过快照校准。切换 ID 会开始新的选区。开始、暂停和结束生成由宿主控制。
+
+文档编译器也支持独立测量显式空段。可用 `emptyParagraphHeight` 指定布局高度，默认采用正文行高。空文档的高度仍为零。
+
 ## Markdown / HTML
 
 ```ts
@@ -159,7 +205,7 @@ const htmlFlow = compileDocument(
 | 导入路径 | 导出 |
 | --- | --- |
 | `react-native-rich-flow` | `compileDocument`、文档/flow 类型、`isValidTextRange`、`getRichTextSelectionText`、`mapRichTextSelection` |
-| `react-native-rich-flow/native` | `RichFlow`、`isRichFlowAvailable`、组件/配置/事件类型 |
+| `react-native-rich-flow/native` | `RichFlow`、`PlainTextStream`、`isRichFlowAvailable`、组件/配置/事件类型 |
 | `react-native-rich-flow/adapters` | `parseMarkdown`、`parseHtml`、`ParseOptions` |
 
 根入口不导入 React Native 或解析器；原生入口需要 React Native 与 Expo Modules，解析器依赖由适配器入口使用。包提供 ESM、CommonJS 与 TypeScript 声明。

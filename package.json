@@ -1,6 +1,6 @@
 {
   "name": "react-native-rich-flow",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "Native continuous rich-text flows, selection, decorations and inline attachments for React Native.",
   "license": "MIT",
   "type": "module",
@@ -66,6 +66,7 @@
     "prepublishOnly": "npm run check",
     "check:package": "node scripts/check-package.mjs",
     "test:native:ios": "bash scripts/test-native-ios.sh",
+    "test:native:ios-formula": "bash scripts/test-native-ios-layout.sh --formula",
     "test:native:ios-layout": "bash scripts/test-native-ios-layout.sh",
     "test:native:android": "bash scripts/test-native-android.sh",
     "example:start": "npm run build && npm run start --workspace example",
@@ -108,9 +109,9 @@
     "example"
   ],
   "peerDependencies": {
-    "expo-modules-core": "^55.0.26",
+    "expo-modules-core": "~3.0.30 || ^55.0.26",
     "react": ">=19.0.0",
-    "react-native": ">=0.83.0"
+    "react-native": "~0.81.5 || >=0.83.0"
   },
   "peerDependenciesMeta": {
     "expo-modules-core": {

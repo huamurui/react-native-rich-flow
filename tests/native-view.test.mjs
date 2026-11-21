@@ -88,3 +88,30 @@ test('RichFlow honors a caller fallback on unsupported platforms', async () => {
   await act(() => renderer.unmount());
   platform.OS = 'ios';
 });
+
+test('RichFlow keeps the last native height during a streaming revision and rejects stale measurements', async () => {
+  const flow = makeFlow();
+  const render = (flow, preserveSelectionOnUpdate = true, config) =>
+    React.createElement(RichFlow, { flow, preserveSelectionOnUpdate, config });
+  const renderer = await mount({ flow });
+  const view = () => renderer.root.findByType('NativeFlow').props;
+  assert.equal(view().preserveSelectionOnUpdate, undefined);
+  await act(() => renderer.update(render(flow)));
+  const first = view();
+  assert.equal(first.preserveSelectionOnUpdate, true);
+  await act(() => first.onHeightChange({ ...identity, layoutKey: first.layoutKey, height: 61 }));
+  const expanded = { ...makeFlow('2'), text: flow.text + ' appended' };
+  await act(() => renderer.update(render(expanded)));
+  assert.equal(view().style.height, 61);
+  await act(() => first.onHeightChange({ ...identity, layoutKey: first.layoutKey, height: 412 }));
+  assert.equal(view().style.height, 61);
+  await act(() => view().onHeightChange({ ...identity, textVersion: '2', layoutKey: view().layoutKey, height: 79 }));
+  assert.equal(view().style.height, 79);
+  await act(() => renderer.update(render({ ...expanded, id: 'new' })));
+  assert.notEqual(view().style.height, 79);
+  await act(() => renderer.update(render(expanded, true, { fontSize: 24 })));
+  assert.notEqual(view().style.height, 79);
+  await act(() => renderer.update(render({ ...expanded, text: '', textVersion: '3' })));
+  assert.equal(view().style.height, 0);
+  await act(() => renderer.unmount());
+});

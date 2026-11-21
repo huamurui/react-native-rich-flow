@@ -6,8 +6,6 @@ import android.graphics.Typeface
 import android.graphics.Rect
 import android.os.Build
 import android.text.Layout
-import android.text.Selection
-import android.text.Spannable
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextUtils
@@ -140,6 +138,10 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
     propBatch.update { it.copy(suppressDoubleTapSelection = value) }
   }
 
+  fun setPreserveSelectionOnUpdate(value: Boolean) {
+    propBatch.update { it.copy(preserveSelectionOnUpdate = value) }
+  }
+
   fun commitProps() {
     if (disposed) return
     val change = propBatch.commit() ?: return
@@ -207,11 +209,7 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
     attachmentFrameScheduled = false
     attachmentUpdates.clear()
     val activeFlow = flow
-    val oldFlow = textView.flow
-    val selectedStart = textView.selectionStart
-    val selectedEnd = textView.selectionEnd
     suppressSelection = true
-    textView.flow = activeFlow
     textView.config = config
     textView.scale = textScale
     val locale = config.language?.let(Locale::forLanguageTag) ?: Locale.getDefault()
@@ -248,6 +246,7 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
       textView.justificationMode = if (shouldJustify(config.justify, config.textAlign)) Layout.JUSTIFICATION_MODE_INTER_WORD else Layout.JUSTIFICATION_MODE_NONE
     }
     if (activeFlow == null) {
+      textView.flow = null
       textView.annotations = emptyList()
       textView.text = ""
       suppressSelection = false
@@ -259,7 +258,10 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
       content.setSpan(span, range.start, range.end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
     if (content.isNotEmpty()) {
-      apply(ParagraphHeightSpan(TextRange(0, content.length), px(config.lineHeight), 0, 0), TextRange(0, content.length))
+      // Apply the document minimum first, then paragraph-specific metrics.
+      val all = TextRange(0, content.length)
+      content.setSpan(ParagraphHeightSpan(all, px(config.lineHeight), 0, 0), all.start, all.end,
+        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE or (1 shl Spanned.SPAN_PRIORITY_SHIFT))
     }
     for (spec in activeFlow.spans) {
       val range = spec.range(activeFlow.text) ?: continue
@@ -311,7 +313,12 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
           apply(InlineBackgroundSpan((config.secondaryColor and 0x00ffffff) or 0x16000000), range)
         }
       }
-      apply(ParagraphHeightSpan(range, px(lineHeight), px(marginTop), px(marginBottom)), range)
+      if (spec.emptyParagraphRange(activeFlow.text) != null) {
+        val blankHeight = spec.number("lineHeight", config.lineHeight.toDouble()).toFloat()
+        apply(EmptyParagraphHeightSpan(range, max(1, px(blankHeight))), range)
+      } else {
+        apply(ParagraphHeightSpan(range, px(lineHeight), px(marginTop), px(marginBottom)), range)
+      }
     }
     val maxAttachmentWidth = max(1f, if (contentWidthPx > 0) contentWidthPx.toFloat() else resources.displayMetrics.widthPixels.toFloat())
     val fontPx = config.fontSize * textScale
@@ -326,12 +333,7 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
     if (content.isNotEmpty() && textView.annotations.isNotEmpty()) {
       apply(AnnotationHeightSpan(textView.annotations), TextRange(0, content.length))
     }
-    textView.setText(content, android.widget.TextView.BufferType.SPANNABLE)
-    if (oldFlow != null && oldFlow.id == activeFlow.id && oldFlow.textVersion == activeFlow.textVersion && selectedStart >= 0 && selectedEnd >= 0) {
-      (textView.text as? Spannable)?.let {
-        Selection.setSelection(it, selectedStart.coerceAtMost(it.length), selectedEnd.coerceAtMost(it.length))
-      }
-    }
+    textView.setStyledSnapshot(activeFlow, content, propBatch.current.preserveSelectionOnUpdate)
     suppressSelection = false
     emitSelection(textView.selectionStart, textView.selectionEnd)
     requestLayout()
@@ -424,15 +426,9 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
     for (update in updates) { update.slot.span.setAsset(update.asset); update.slot.visibility.hasAsset = true }
     // All completions received during this frame update the layout once, retaining selection.
     // Mutating ReplacementSpan metrics alone does not invalidate TextView's cached Layout.
-    val start = textView.selectionStart
-    val end = textView.selectionEnd
+    val activeFlow = flow ?: return
     suppressSelection = true
-    textView.setText(SpannableString(textView.text), android.widget.TextView.BufferType.SPANNABLE)
-    if (start >= 0 && end >= 0) {
-      (textView.text as? Spannable)?.let {
-        Selection.setSelection(it, start.coerceAtMost(it.length), end.coerceAtMost(it.length))
-      }
-    }
+    textView.setStyledSnapshot(activeFlow, SpannableString(textView.text), propBatch.current.preserveSelectionOnUpdate)
     suppressSelection = false
     textView.requestLayout()
     textView.invalidate()
@@ -496,11 +492,8 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
 
   private fun copyText(start: Int, end: Int): String {
     val activeFlow = flow ?: return ""
-    val slots = activeFlow.attachments.mapNotNull { attachment ->
-      val range = attachment.range(activeFlow.text) ?: return@mapNotNull null
-      RichTextCopySlot(range, attachment.opt("copyText") as? String ?: attachment.opt("latex") as? String ?: attachment.opt("alt") as? String ?: "[图片]")
-    }
-    return richTextSelectionText(activeFlow.text, start, end, slots) ?: ""
+    val copy = activeFlow.copySemantics
+    return richTextSelectionText(activeFlow.text, start, end, copy.slots, copy.terminalAnchor) ?: ""
   }
 
   private fun px(dp: Float): Int = ceil(dp.coerceAtLeast(0f) * textScale).toInt()

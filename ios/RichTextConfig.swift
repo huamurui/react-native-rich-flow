@@ -53,6 +53,13 @@ struct RichTextConfig {
     let effectiveLanguage = language ?? Locale.preferredLanguages.first ?? ""
     style.lineBreakStrategy = effectiveLanguage.lowercased().hasPrefix("ko") ? .hangulWordPriority : []
   }
+
+  func configureEmptyParagraph(_ style: NSMutableParagraphStyle, spec: RichTextSpec, font: UIFont, scale: CGFloat) -> UIFont {
+    let height = CGFloat(max(1, richTextNumber(spec["lineHeight"], fallback: Double(lineHeight)))) * scale
+    style.minimumLineHeight = height
+    style.maximumLineHeight = height
+    return font.withSize(min(font.pointSize, height / 2))
+  }
 }
 
 extension CGFloat {

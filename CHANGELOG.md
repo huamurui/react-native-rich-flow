@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.0-alpha.1 — Unreleased
+
+- Allow the SDK 54 New Architecture host with React Native 0.81.5 and Expo Modules Core 3.0.30 in the native peer ranges. The example continues to use SDK 55.
+
+- Add opt-in `preserveSelectionOnUpdate` on RichFlow and a streaming Markdown playground that replays UTF-8 SSE text deltas into formatted native text.
+- Restore an active Android system Copy menu after eligible Markdown and plain-text updates.
+- Add the `PlainTextStream` native prototype and an offline bilingual playground case for selecting and copying earlier text during generation.
+- Restore Android text selection when a selectable view is measured before its window attachment.
+- Refresh iOS accessibility paragraph labels after replacing the document.
+- Retry a failed remote image on iOS while its attachment stays visible, including during streaming updates.
+- Preserve transformed glyph references in pre-rendered iOS SVG formulas, including scaling around an explicit two-axis origin. Static stylesheet transforms override a glyph's presentation transform once.
+- Give explicit empty paragraphs measurable line heights and preserve their semantic copy text.
+
 ## 0.1.0-alpha.0 — 2026-10-21
 
 - Add the Android TextView / Spannable and iOS UITextView / TextKit native module.

@@ -19,6 +19,9 @@ public final class RichFlowModule: Module {
       Prop("layoutKey") { (view: RichTextView, value: String) in
         view.setLayoutKey(value)
       }
+      Prop("preserveSelectionOnUpdate", false) { (view: RichTextView, value: Bool) in
+        view.preserveSelectionOnUpdate = value
+      }
       Prop("selectable") { (view: RichTextView, value: Bool) in
         view.setSelectable(value)
       }

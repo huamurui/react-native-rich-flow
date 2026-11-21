@@ -39,7 +39,16 @@ jobs:
       - run: bash scripts/test-native-ios.sh
 
   android:
+    name: ${{ matrix.check }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sdk: 55
+            check: android
+          - sdk: 54
+            check: Android SDK 54 consumer
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,9 +65,13 @@ jobs:
           packages: platform-tools
       - uses: gradle/actions/setup-gradle@v4
       - run: npm ci
-      - run: npx expo prebuild --platform android --no-install
+      - if: matrix.sdk == 54
+        run: bash scripts/check-sdk54-android.sh
+      - if: matrix.sdk == 55
+        run: npx expo prebuild --platform android --no-install
         working-directory: example
         env:
           EXPO_NO_TELEMETRY: 1
-      - run: bash ./gradlew :react-native-rich-flow:testDebugUnitTest :app:assembleDebug -PreactNativeArchitectures=arm64-v8a --console=plain
+      - if: matrix.sdk == 55
+        run: bash ./gradlew :react-native-rich-flow:testDebugUnitTest :app:assembleDebug -PreactNativeArchitectures=arm64-v8a --console=plain
         working-directory: example/android

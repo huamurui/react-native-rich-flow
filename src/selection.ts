@@ -33,6 +33,12 @@ export function getRichTextSelectionText(
   end: number,
 ): string {
   if (!isValidTextRange(flow.text, start, end)) return '';
+  const last = flow.paragraphs?.[flow.paragraphs.length - 1];
+  if (end === flow.text.length && last?.emptyLine === true && last.end === end &&
+      last.start === end - 1 && flow.text[last.start] === '\u200b' &&
+      (last.start === 0 || flow.text[last.start - 1] === '\n')) {
+    end -= 1;
+  }
   const slots = flow.attachments
     .filter((slot) =>
       isValidTextRange(flow.text, slot.start, slot.end) &&

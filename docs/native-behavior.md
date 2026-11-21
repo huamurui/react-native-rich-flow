@@ -1,6 +1,6 @@
 # Native behavior and limits
 
-RichFlow registers one Expo Modules view named `RichFlow` on Android and iOS.
+The rich-text renderer registers the Expo Modules view `RichFlow` on Android and iOS. The unreleased plain-text streaming prototype uses the separate `RichFlowStream` view.
 It requires a development or production build that includes the native module;
 Expo Go cannot load it. The native layer consumes a compiled `RichTextFlow`, not
 Markdown, HTML, CSS, or an application-specific document format.
@@ -14,11 +14,18 @@ Markdown, HTML, CSS, or an application-specific document format.
 - All ranges are half-open UTF-16 offsets. Both platforms reject malformed,
   out-of-bounds, empty, and surrogate-splitting ranges. This is not a promise
   of grapheme-cluster validation.
+- With `preserveSelectionOnUpdate`, a selection can span revisions of the same flow when the UTF-16 prefix through the selection end is unchanged, including its attachment substitutions and synthetic empty-paragraph anchors. Keep the document ID stable and use a new ID for a new message. The default keeps the existing static-document selection behavior.
 - System copy substitutes selected `U+FFFC` attachment slots with `copyText`.
   Source-node mapping stays in JavaScript and is not sent to the native view.
 - Selection events carry `flowId`, `textVersion`, `start`, and `end`. A cleared
   or collapsed selection uses `start: -1, end: -1`; disabling selection also
   reports the cleared state.
+
+### Updating a selected Markdown document
+
+The host keeps a stable flow ID and sends complete compiled revisions with `preserveSelectionOnUpdate`. On iOS, TextKit compares the attributed runs, updates changed attributes in the common prefix, and replaces the changed text suffix in the existing text storage. On Android, the same TextView receives a new styled buffer. When an active system selection still matches, the view restores its anchor and focus. If the user had the contextual Copy menu open, it also requests the system selection action again after installing the buffer. Plain-text appends and snapshot corrections use the same selection handling on Android while retaining the original Editable buffer. The OS reopens the contextual menu asynchronously.
+
+The playground compiles the Markdown received so far once per delivery batch. Its SSE reader and simulated response events live in the example workspace. A closing delimiter can change earlier formatting. Long-answer parsing and snapshot costs have yet to be benchmarked. [iOS captures and platform checks](./validation.md#streaming-markdown--2026-11-21)
 
 ## Formatting and interaction
 
@@ -92,6 +99,15 @@ SDWebImageSVGCoder on iOS. Formula images are tinted with the current text color
 ordinary images retain their colors. LaTeX text without an image URL is a
 placeholder, not locally typeset mathematics.
 
+For formula glyphs defined with SVG `<use>`, iOS preserves explicit two-axis
+`transform-origin` coordinates in user units or px with the default view-box.
+For static rules on type, ID and class selectors, including compounds and lists,
+a stylesheet scale of 3 overrides a glyph attribute scale of 2 and renders at 3×.
+The rewrite accounts for specificity, declaration order and `!important`.
+When a transform depends on a relative origin, inline style, conditional rule,
+complex selector or another reference box, the system SVG decoder handles the
+original element.
+
 The iOS podspec declares both `SDWebImage` and `SDWebImageSVGCoder` directly.
 Swift imports SDWebImage, and Expo autolinking enables modular headers for direct
 dependencies. This supports the default CocoaPods static-library setup without
@@ -102,6 +118,10 @@ Attachments load asynchronously, with a 4 MiB resource limit and a shared
 attachments and release their own offscreen subscriptions and image references.
 The shared cache may retain decoded images. Failed resources retain their
 attachment slots; the first layout does not wait for every image to finish loading.
+On iOS, a failed HTTP(S) attachment can retry twice during one continuous visit
+to the prefetch area, after delays of one and four seconds. Retries also run
+while the document is idle. Leaving the area or replacing the slot cancels its
+pending work. A failed inline data URL has no scheduled retry.
 
 Height events include `flowId`, `textVersion`, `layoutKey`, and a height in React
 Native layout units. A valid empty flow reports zero height on both platforms.
@@ -110,6 +130,10 @@ height. Native generation and layout checks prevent superseded measurements
 and attachment results from being applied to a different flow.
 
 ## Verification
+
+With the example's CocoaPods installed and an iOS simulator booted, run
+`npm run test:native:ios-formula` to compare rendered glyphs against reference
+pixels through the production attachment loader.
 
 From the repository root:
 
