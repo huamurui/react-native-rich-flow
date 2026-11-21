@@ -99,6 +99,11 @@ SDWebImageSVGCoder on iOS. Formula images are tinted with the current text color
 ordinary images retain their colors. LaTeX text without an image URL is a
 placeholder, not locally typeset mathematics.
 
+For formula glyphs defined with SVG `<use>`, iOS preserves explicit two-axis
+`transform-origin` coordinates in user units or px with the default view-box.
+Relative origins, inline CSS transforms and other reference boxes stay on the
+original element and depend on the system SVG decoder.
+
 The iOS podspec declares both `SDWebImage` and `SDWebImageSVGCoder` directly.
 Swift imports SDWebImage, and Expo autolinking enables modular headers for direct
 dependencies. This supports the default CocoaPods static-library setup without

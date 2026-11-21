@@ -9,7 +9,7 @@
 - Add the `PlainTextStream` native prototype and an offline bilingual playground case for selecting and copying earlier text during generation.
 - Restore Android text selection when a selectable view is measured before its window attachment.
 - Refresh iOS accessibility paragraph labels after replacing the document.
-- Preserve transformed glyph references in pre-rendered iOS SVG formulas.
+- Preserve transformed glyph references in pre-rendered iOS SVG formulas, including scaling around an explicit two-axis origin.
 - Give explicit empty paragraphs measurable line heights and preserve their semantic copy text.
 
 ## 0.1.0-alpha.0 — 2026-10-21

@@ -16,6 +16,29 @@ final class FormulaGlyphSVG: NSObject, XMLParserDelegate {
     return parser.parse() ? writer.output : nil
   }
 
+  private func absoluteLength(_ token: Substring) -> Double? {
+    let number = token.lowercased().hasSuffix("px") ? token.dropLast(2) : token
+    guard number.allSatisfy({ "0123456789.eE+-".contains($0) }),
+          let value = Double(number), value.isFinite else { return nil }
+    return value
+  }
+
+  private func wrapperTransform(for attributes: [String: String]) -> String? {
+    let box = attributes["transform-box"]?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    guard let transform = attributes["transform"],
+          attributes["style"]?.range(of: "transform", options: .caseInsensitive) == nil,
+          box == nil || box == "view-box" else { return nil }
+    guard let origin = attributes["transform-origin"] else { return transform }
+    let axes = origin.split(whereSeparator: { $0.isWhitespace })
+    // A single value defaults the other axis to center. Relative lengths,
+    // keywords and other reference boxes need layout information.
+    guard axes.count == 2, let x = absoluteLength(axes[0]), let y = absoluteLength(axes[1]) else { return nil }
+    if x == 0 && y == 0 { return transform }
+    // CoreSVG also ignores transform-origin on a group. Compose the actual
+    // pivot in user coordinates, preserving the order of the original list.
+    return "translate(\(x) \(y)) \(transform) translate(\(-x) \(-y))"
+  }
+
   private func escaped(_ text: String, attribute: Bool = false) -> String {
     let value = text.replacingOccurrences(of: "&", with: "&amp;")
       .replacingOccurrences(of: "<", with: "&lt;").replacingOccurrences(of: ">", with: "&gt;")
@@ -30,7 +53,9 @@ final class FormulaGlyphSVG: NSObject, XMLParserDelegate {
     var attributes = attributes
     let name = element.split(separator: ":").last
     var closing = ""
-    if name == "use", let transform = attributes.removeValue(forKey: "transform") {
+    if name == "use", let transform = wrapperTransform(for: attributes) {
+      attributes.removeValue(forKey: "transform")
+      attributes.removeValue(forKey: "transform-origin")
       let prefix = element.dropLast(3)
       let group = "\(prefix)g"
       // Put declarations on the wrapper too when this element defines its prefix.
