@@ -21,6 +21,8 @@ npm run example:start
 
 iOS requires Xcode and CocoaPods. Android requires JDK 17, the Android SDK, and a device or emulator. Rerun the platform build after changing native code; Fast Refresh updates JavaScript only.
 
+During prebuild, the playground adds a CocoaPods hook that raises SDWebImage’s privacy resource bundle to the app’s iOS deployment target when its declared minimum is older. This lets the generated workspace build with Xcode 27. To update an existing generated project, run `npm run prebuild --workspace example -- --platform ios` from the repository root, then run `pod install` in `example/ios`.
+
 ## Languages
 
 The **English / 中文** button in the header switches the UI, accessibility labels, case descriptions, rendered content, and default Markdown/HTML examples. On first launch, the device’s `Intl` locale selects Simplified Chinese for `zh` locales; all other locales, or unavailable locale detection, fall back to English. Switching lasts for the current app session and does not change the system language.

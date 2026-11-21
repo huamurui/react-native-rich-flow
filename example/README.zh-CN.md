@@ -21,6 +21,8 @@ npm run example:start
 
 iOS 需要 Xcode 与 CocoaPods，Android 需要 JDK 17、Android SDK 和设备或模拟器。原生文件变化后重新执行对应 `example:ios` / `example:android`，Fast Refresh 只更新 JavaScript。
 
+示例在 prebuild 时会生成 CocoaPods 钩子。SDWebImage 的隐私资源包声明的最低 iOS 版本低于应用时，钩子会将它提升至应用的最低版本，使生成的工程能够使用 Xcode 27 构建。已有本地工程可在仓库根目录运行 `npm run prebuild --workspace example -- --platform ios`，再到 `example/ios` 运行 `pod install`。
+
 ## 语言
 
 页头的 **English / 中文** 按钮切换应用界面、无障碍标签、案例说明、展示正文及 Markdown/HTML 默认内容。首次启动通过设备的 `Intl` locale 选择语言：`zh` 系列使用简体中文，其他语言或读取失败时使用 English。切换只影响当前运行，不修改系统语言。
