@@ -77,7 +77,7 @@ SDK 54 目前请使用本分支生成的 tarball。npm 已发布的 `0.1.0-alpha
 npm pack
 
 # 在已经配置 Expo Modules 的同级应用中：
-npm install ../react-native-rich-flow/react-native-rich-flow-0.1.0-alpha.0.tgz
+npm install ../react-native-rich-flow/react-native-rich-flow-0.1.0-alpha.1.tgz
 npx expo run:android
 # 或 npx expo run:ios
 ```

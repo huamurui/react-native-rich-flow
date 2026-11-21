@@ -110,7 +110,7 @@ For SDK 54 or unreleased features, pack a local checkout.
 npm pack
 
 # In a sibling application with Expo Modules already configured:
-npm install ../react-native-rich-flow/react-native-rich-flow-0.1.0-alpha.0.tgz
+npm install ../react-native-rich-flow/react-native-rich-flow-0.1.0-alpha.1.tgz
 npx expo run:android
 # Or: npx expo run:ios
 ```

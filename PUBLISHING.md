@@ -54,7 +54,8 @@ npm publish --tag alpha --access public --registry=https://registry.npmjs.org/
 ## 确认发布结果
 
 ```bash
-npm view react-native-rich-flow@0.1.0-alpha.0 version license repository.url --registry=https://registry.npmjs.org/
+version=$(node -p "require('./package.json').version")
+npm view "react-native-rich-flow@$version" version license repository.url --registry=https://registry.npmjs.org/
 npm view react-native-rich-flow dist-tags --registry=https://registry.npmjs.org/
 ```
 
