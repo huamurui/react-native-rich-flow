@@ -42,7 +42,7 @@ The native run commands generate and build the example host. After installing a
 development build, use `npm run example:start` to restart Metro. Android needs
 JDK 17 and an Android SDK/device or emulator; iOS needs Xcode and CocoaPods on macOS.
 
-The playground has English and Simplified Chinese UI/content, with nine cases: cross-paragraph selection, text styles,
+The playground has English and Simplified Chinese UI/content, with eleven cases including streaming Markdown, plain-text streaming, cross-paragraph selection, text styles,
 decorations and actions, inline attachments, content updates, long scrolling,
 Markdown, HTML, and language-specific typography. The last case includes Chinese,
 Japanese, Zhuyin, Korean, Arabic, French, and English presets. Adjust font size, alignment, theme, and selection; inspect
@@ -71,6 +71,7 @@ See [native behavior and limits](./docs/native-behavior.md) for platform details
 | Semantic copying and selection source mapping | Native copy + JS mapping | Native copy + JS mapping | UTF-16 semantic offsets |
 | Asynchronous attachment loading and height updates | Implemented | Implemented | Initial geometry can change after loading |
 | Markdown / HTML input | Shared adapter | Shared adapter | Common semantic subset |
+| Streaming Markdown with a selected prefix (unreleased) | Implemented, device acceptance pending | Verified on iPhone SE (3rd generation) | One mounted flow per message |
 
 Screenshots from the included playground on Android 16 (vivo V2509A), using the
 light theme. Tap an image for full resolution. [Capture notes](./docs/images/README.md).
@@ -173,6 +174,42 @@ paragraph metrics out of sync.
 Use it in a container with a defined available width. An empty flow has zero
 content height. It does not scroll internally; the example uses a `ScrollView`.
 
+## Streaming Markdown (unreleased)
+
+Open **Streaming Markdown** in the playground. The opening sentence is ready to select before playback. A short answer about a birding notebook arrives in bursts, with bold text, a fenced Python block, and a list. Use system Copy while the code grows and paste into the check field.
+
+<img src="./docs/images/streaming-markdown-ios.gif" width="340" alt="On iOS, the word 观测 stays selected as a Python block grows. The system Copy and Paste actions put 观测 in the check field.">
+
+The recording uses the Chinese playground on an iOS 18.4 simulator. On a physical iPhone SE (3rd generation) running iOS 27.2, “Group bird sightings” stayed selected through bold and code updates and pasted exactly into the input. [SE3 selection](./docs/images/streaming-markdown-se3-selection.png) · [SE3 paste result](./docs/images/streaming-markdown-se3-paste.png)
+
+For a streamed answer, accumulate the Markdown for one message and keep a stable document ID across revisions. Render the snapshots in one mounted view:
+
+```tsx
+const flow = useMemo(() => compileDocument(
+  parseMarkdown(markdownSoFar, { id: messageId }), metrics
+), [markdownSoFar, messageId, metrics]);
+
+return <RichFlow flow={flow} config={metrics} preserveSelectionOnUpdate />;
+```
+
+The opt-in keeps the native selection when the rendered text and its copy substitutions match from the beginning of the document through the end of the selection. Rewriting the selected prefix or starting a new message clears it. Each delivery batch reparses the accumulated Markdown, so a closing delimiter can restyle earlier text. Parsing and compiling still scale with the full message length.
+
+The offline example decodes UTF-8 SSE bytes and consumes one output item's `response.output_text.delta`, `response.output_text.done`, and `response.completed` events. This response format belongs to the example. The renderer takes ordinary RichFlow documents from any source. [WHATWG event stream format](https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation) · [OpenAI Responses streaming events](https://developers.openai.com/api/reference/resources/responses/streaming-events)
+
+## Plain-text streaming prototype (unreleased)
+
+Build the example from this checkout and open **Streaming**. Tap **Start**, select part of the first sentence as more text appears, use the system **Copy** action, and paste it into **Paste to check**. The example generates text locally and leaves scrolling to the reader.
+
+```tsx
+import { PlainTextStream } from 'react-native-rich-flow/native';
+
+<PlainTextStream documentId={message.id} text={message.textSoFar} />
+```
+
+Pass the full plain text received so far and keep the message ID stable. The component coalesces updates per animation frame and sends appended text to the existing native buffer. It keeps a selection in the unchanged prefix and recovers with a snapshot after a missed update or replacement. Changing the ID starts a new selection. The host controls when generation starts and stops.
+
+In the document compiler, an explicit empty paragraph now has a measurable height. Set the optional `emptyParagraphHeight` in layout units to override the default body line height. An empty document still has zero height.
+
 ## Markdown and HTML adapters
 
 ```ts
@@ -214,7 +251,7 @@ reported to the host; RichFlow does not automatically navigate.
 | Import | Exports |
 | --- | --- |
 | `react-native-rich-flow` | `compileDocument`, document/flow types, `isValidTextRange`, `getRichTextSelectionText`, `mapRichTextSelection` |
-| `react-native-rich-flow/native` | `RichFlow`, `isRichFlowAvailable`, component/config/event types |
+| `react-native-rich-flow/native` | `RichFlow`, `PlainTextStream`, `isRichFlowAvailable`, component/config/event types |
 | `react-native-rich-flow/adapters` | `parseMarkdown`, `parseHtml`, `ParseOptions` |
 
 The root entry does not import React Native or the parsers. The native entry needs
