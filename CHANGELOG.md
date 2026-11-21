@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-alpha.1 — Unreleased
 
 - Allow the SDK 54 New Architecture host with React Native 0.81.5 and Expo Modules Core 3.0.30 in the native peer ranges. The example continues to use SDK 55.
 

@@ -1,6 +1,6 @@
 {
   "name": "react-native-rich-flow",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "Native continuous rich-text flows, selection, decorations and inline attachments for React Native.",
   "license": "MIT",
   "type": "module",
