@@ -75,15 +75,38 @@ struct ModelsSmoke {
     let directionRuby = RichTextAnnotation.parse(["start": 0, "end": 3, "kind": "ruby", "text": "かんじ"], in: "漢\u{200e}字" as NSString)!
     expect(directionRuby.graphemes.count == 2 && directionRuby.reading(forBaseIndices: 1..<2) == "んじ", "Invisible direction marks do not consume ruby readings")
     let visibility = RichTextAttachmentVisibility()
+    let now = DispatchTime.now()
     expect(visibility.beginLoad() == nil, "Offscreen attachments do not load")
     visibility.setActive(true)
-    let first = visibility.beginLoad()!
-    expect(visibility.beginLoad() == nil, "A viewport visit loads at most once")
+    let first = visibility.beginLoad(now: now)!
+    expect(visibility.beginLoad(now: now + .seconds(60)) == nil, "An in-flight request is not duplicated by layout")
+    let retryAt = visibility.retryDeadline(afterFailure: first, now: now)!
+    expect(visibility.retryDeadline(afterFailure: first, now: now) == nil, "One failure schedules only one retry")
+    visibility.setActive(true)
+    expect(visibility.beginLoad(now: retryAt - .milliseconds(1)) == nil, "Snapshots reusing a visible slot respect backoff")
+    let second = visibility.beginLoad(now: retryAt)!
+    expect(!visibility.accepts(first) && visibility.accepts(second), "A retry rejects the earlier attempt's callbacks")
+    expect(visibility.retryDeadline(afterFailure: first, now: retryAt) == nil, "A late failure cannot schedule another retry")
+    let lastRetryAt = visibility.retryDeadline(afterFailure: second, now: retryAt)!
+    expect(lastRetryAt > retryAt, "Consecutive failures back off")
+    let third = visibility.beginLoad(now: lastRetryAt)!
+    expect(visibility.retryDeadline(afterFailure: third, now: lastRetryAt) == nil, "A persistent failure exhausts its retry budget")
+    expect(visibility.beginLoad(now: lastRetryAt + .seconds(60)) == nil, "A visible slot cannot bypass its retry budget on another snapshot")
     visibility.setActive(false)
     visibility.setActive(true)
-    let second = visibility.beginLoad()!
-    expect(!visibility.accepts(first) && visibility.accepts(second), "Canceled results cannot apply after viewport reentry")
+    let nextVisit = visibility.beginLoad()!
+    expect(!visibility.accepts(third), "A new viewport visit invalidates old attempts")
+    let cancelledRetryAt = visibility.retryDeadline(afterFailure: nextVisit, now: now)!
+    visibility.setActive(false)
+    expect(!visibility.accepts(nextVisit) && visibility.beginLoad(now: cancelledRetryAt) == nil, "A retry cannot restart a retired or offscreen slot")
+    visibility.setActive(true)
+    let fresh = visibility.beginLoad()!
+    expect(!visibility.accepts(nextVisit) && visibility.accepts(fresh), "A timer from a previous visit cannot affect the new request")
+    let recovery = visibility.retryDeadline(afterFailure: fresh, now: now)!
+    let recovered = visibility.beginLoad(now: recovery)!
     visibility.hasAsset = true
+    expect(visibility.retryDeadline(afterFailure: recovered, now: recovery) == nil && visibility.beginLoad() == nil,
+           "A recovered attachment stays loaded across snapshots")
     visibility.setActive(false)
     expect(!visibility.hasAsset, "Offscreen attachments release their asset state")
     expect(intersectsRichTextAttachmentViewport(top: 100, bottom: 140, viewportTop: 120, viewportBottom: 200), "Intersecting attachments activate")

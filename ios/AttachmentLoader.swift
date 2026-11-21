@@ -166,9 +166,10 @@ internal enum RichTextAttachmentLoader {
     return data.flatMap { $0.count <= maximumBytes ? $0 : nil }
   }
 
-  fileprivate static func anonymousURL(_ source: String) -> URL? {
-    guard let url = URL(string: source),
-          ["https", "http"].contains(url.scheme?.lowercased() ?? ""),
+  static func anonymousURL(_ source: String) -> URL? {
+    let prefix = source.prefix(8).lowercased()
+    guard prefix.hasPrefix("https://") || prefix.hasPrefix("http://"),
+          let url = URL(string: source),
           url.host != nil, url.user == nil, url.password == nil else { return nil }
     return url
   }

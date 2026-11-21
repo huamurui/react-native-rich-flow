@@ -11,11 +11,14 @@ private final class RichTextAttachmentSlot {
   let scale: CGFloat
   let visibility = RichTextAttachmentVisibility()
   var request: RichTextAttachmentRequest?
+  var retry: DispatchWorkItem?
 
   func deactivate() {
     visibility.setActive(false)
     request?.cancel()
     request = nil
+    retry?.cancel()
+    retry = nil
     attachment.releaseAsset()
   }
 
@@ -106,7 +109,10 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
   }
 
   deinit {
-    attachments.forEach { $0.request?.cancel() }
+    for slot in attachments {
+      slot.request?.cancel()
+      slot.retry?.cancel()
+    }
     lifecycleObservers.forEach { NotificationCenter.default.removeObserver($0) }
   }
 
@@ -418,17 +424,36 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
       let glyphs = manager.glyphRange(forCharacterRange: slot.range, actualCharacterRange: nil)
       let rect = manager.boundingRect(forGlyphRange: glyphs, in: container)
       let active = intersectsRichTextAttachmentViewport(top: Double(rect.minY), bottom: Double(rect.maxY), viewportTop: top, viewportBottom: bottom)
-      if slot.visibility.setActive(active), !active {
-        slot.request?.cancel(); slot.request = nil; slot.attachment.releaseAsset()
-        manager.invalidateDisplay(forCharacterRange: slot.range)
+      if !active {
+        if slot.visibility.active {
+          slot.deactivate()
+          manager.invalidateDisplay(forCharacterRange: slot.range)
+        }
+        continue
       }
+      slot.visibility.setActive(true)
       guard let revision = slot.visibility.beginLoad() else { continue }
+      slot.retry?.cancel()
+      slot.retry = nil
       // A matching slot can survive several snapshots. Retiring a slot
       // invalidates its visibility revision before any queued work may edit.
       slot.request = RichTextAttachmentLoader.load(spec: slot.spec, fontSize: slot.fontSize, maxWidth: slot.maxWidth, scale: slot.scale) { [weak self, weak slot] asset in
-        guard let self, let slot, slot.visibility.accepts(revision) else { return }
+        guard let self, let slot, slot.visibility.accepts(revision), slot.request != nil else { return }
         slot.request = nil
-        guard let asset else { return }
+        guard let asset else {
+          guard let source = slot.spec["url"] as? String, RichTextAttachmentLoader.anonymousURL(source) != nil,
+                let deadline = slot.visibility.retryDeadline(afterFailure: revision) else { return }
+          let retry = DispatchWorkItem { [weak self, weak slot] in
+            guard let self, let slot, slot.visibility.accepts(revision) else { return }
+            slot.retry = nil
+            // Recheck visibility on the next layout even if the document is idle.
+            self.lastAttachmentViewport = nil
+            self.setNeedsLayout()
+          }
+          slot.retry = retry
+          DispatchQueue.main.asyncAfter(deadline: deadline, execute: retry)
+          return
+        }
         self.attachmentUpdates.append((slot, revision, asset))
         self.scheduleAttachmentUpdate()
       }

@@ -114,6 +114,10 @@ Attachments load asynchronously, with a 4 MiB resource limit and a shared
 attachments and release their own offscreen subscriptions and image references.
 The shared cache may retain decoded images. Failed resources retain their
 attachment slots; the first layout does not wait for every image to finish loading.
+On iOS, a failed HTTP(S) attachment can retry twice during one continuous visit
+to the prefetch area, after delays of one and four seconds. Retries also run
+while the document is idle. Leaving the area or replacing the slot cancels its
+pending work. A failed inline data URL has no scheduled retry.
 
 Height events include `flowId`, `textVersion`, `layoutKey`, and a height in React
 Native layout units. A valid empty flow reports zero height on both platforms.
