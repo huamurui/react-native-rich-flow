@@ -24,6 +24,14 @@ internal data class FlowData(
     RichTextCopySemantics(slots, terminalAnchor?.takeIf { it.end == text.length })
   }
 
+  fun hasSameSelectionPrefix(next: FlowData, anchor: Int, focus: Int): Boolean {
+    val end = maxOf(anchor, focus)
+    val start = minOf(anchor, focus)
+    if (richTextRange(start, end, text) == null || richTextRange(start, end, next.text) == null ||
+      !text.regionMatches(0, next.text, 0, end)) return false
+    return copySemantics.matchesThrough(end, next.copySemantics)
+  }
+
   companion object {
     fun parse(value: String): FlowData? = runCatching {
       val json = JSONObject(value)

@@ -77,6 +77,26 @@ class RichTextPropBatchTest {
     }
   }
 
+  @Test fun selectionPreservationIsOptInAndDoesNotSkipStyleOnlySnapshots() {
+    val batch = RichTextPropBatch()
+    assertFalse(batch.current.preserveSelectionOnUpdate)
+    batch.update { it.copy(preserveSelectionOnUpdate = true) }
+    assertFalse(batch.commit()!!.requiresRebuild)
+    val snapshots = listOf(
+      """{"text":"same","paragraphs":[{"kind":"heading","start":0,"end":4,"level":1}]}""",
+      """{"text":"same","spans":[{"kind":"strong","start":0,"end":4}]}""",
+      """{"text":"same","paragraphs":[{"kind":"code","start":0,"end":4}]}"""
+    )
+    for (snapshot in snapshots) {
+      batch.update { it.copy(flowJson = snapshot) }
+      val update = batch.commit()!!
+      assertTrue(update.requiresRebuild)
+      assertTrue(update.current.preserveSelectionOnUpdate)
+    }
+    batch.update { it.copy(preserveSelectionOnUpdate = false) }
+    assertFalse(batch.commit()!!.current.preserveSelectionOnUpdate)
+  }
+
   @Test fun pendingAndSupersededBatchesRejectOldMeasurementsEvenWhenTheKeyReturns() {
     val batch = RichTextPropBatch()
     batch.update { initial }

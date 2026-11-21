@@ -15,6 +15,7 @@ class RichFlowModule : Module() {
       Prop("contentWidth") { view: RichTextView, value: Float -> view.setContentWidth(value) }
       Prop("layoutKey") { view: RichTextView, value: String -> view.setLayoutKey(value) }
       Prop("selectable") { view: RichTextView, value: Boolean -> view.setSelectable(value) }
+      Prop("preserveSelectionOnUpdate", false) { view: RichTextView, value: Boolean -> view.setPreserveSelectionOnUpdate(value) }
       Prop("suppressDoubleTapSelection") { view: RichTextView, value: Boolean -> view.setSuppressDoubleTapSelection(value) }
 
       OnViewDidUpdateProps { view: RichTextView -> view.commitProps() }

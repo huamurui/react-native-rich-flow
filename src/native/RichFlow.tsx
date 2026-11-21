@@ -27,6 +27,8 @@ export interface RichFlowProps extends ViewProps {
   readonly flow: RichTextFlow;
   readonly config?: RichFlowConfig;
   readonly selectable?: boolean;
+  /** Keep a selection in the unchanged prefix when updating the same document. */
+  readonly preserveSelectionOnUpdate?: boolean;
   readonly suppressDoubleTapSelection?: boolean;
   readonly onSelectionChange?: (event: RichFlowSelectionEvent) => void;
   readonly onAction?: (event: RichFlowActionEvent) => void;
@@ -41,6 +43,7 @@ interface NativeProps extends ViewProps {
   contentWidth: number;
   layoutKey: string;
   selectable: boolean;
+  preserveSelectionOnUpdate?: boolean;
   suppressDoubleTapSelection: boolean;
   onSelectionChange: (event: unknown) => void;
   onAction: (event: unknown) => void;
@@ -70,12 +73,12 @@ const positive = (value: number | undefined, fallback: number) =>
 
 /** One native text view with continuous selection and self-measured content height. */
 export function RichFlow({
-  flow, config = {}, selectable = true, suppressDoubleTapSelection = false,
+  flow, config = {}, selectable = true, preserveSelectionOnUpdate = false, suppressDoubleTapSelection = false,
   onSelectionChange, onAction, onHeightChange, fallback, ...viewProps
 }: RichFlowProps) {
   const NativeView = getNativeView();
   const [width, setWidth] = useState(0);
-  const [measurement, setMeasurement] = useState<{ key: string; height: number } | null>(null);
+  const [measurement, setMeasurement] = useState<{ key: string; flowId: string; width: number; configJson: string; height: number } | null>(null);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -97,7 +100,9 @@ export function RichFlow({
   const estimatedHeight = flow.text.length === 0 ? 0 : Math.max(lineHeight,
     Math.ceil(flow.text.length / Math.max(1, width / fontSize)) * lineHeight +
     flow.paragraphs.length * paragraphSpacing);
-  const height = measurement?.key === layoutKey ? measurement.height : estimatedHeight;
+  const sameLayout = measurement?.flowId === flow.id && measurement.width === width && measurement.configJson === configJson;
+  const height = measurement && (measurement.key === layoutKey || (preserveSelectionOnUpdate && sameLayout && flow.text.length > 0))
+    ? measurement.height : estimatedHeight;
 
   const onContentLayout = (event: LayoutChangeEvent) => {
     const next = event.nativeEvent.layout.width;
@@ -110,13 +115,14 @@ export function RichFlow({
         {NativeView ? (width > 0 && <NativeView
           flowJson={flowJson} configJson={configJson} contentWidth={width} layoutKey={layoutKey}
           selectable={selectable} suppressDoubleTapSelection={suppressDoubleTapSelection}
+          {...(preserveSelectionOnUpdate && { preserveSelectionOnUpdate })}
           style={{ width, height }}
           onHeightChange={(raw) => {
             if (!mounted.current || current.current.layoutKey !== layoutKey) return;
             const next = readHeightEvent(raw, current.current.flow, layoutKey);
             if (next === null) return;
             setMeasurement((previous) => previous?.key === layoutKey && previous.height === next
-              ? previous : { key: layoutKey, height: next });
+              ? previous : { key: layoutKey, flowId: flow.id, width, configJson, height: next });
             onHeightChange?.(next);
           }}
           onSelectionChange={(raw) => {

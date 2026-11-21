@@ -6,7 +6,8 @@ internal data class RichTextViewProps(
   val contentWidthPx: Int = 0,
   val layoutKey: String = "",
   val selectable: Boolean = true,
-  val suppressDoubleTapSelection: Boolean = false
+  val suppressDoubleTapSelection: Boolean = false,
+  val preserveSelectionOnUpdate: Boolean = false
 )
 
 internal data class RichTextPropChange(val previous: RichTextViewProps, val current: RichTextViewProps) {

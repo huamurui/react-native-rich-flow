@@ -25,7 +25,12 @@ internal fun richTextRange(start: Any?, end: Any?, text: String): TextRange? {
 
 internal data class RichTextCopySlot(val range: TextRange, val text: String)
 
-internal data class RichTextCopySemantics(val slots: List<RichTextCopySlot>, val terminalAnchor: TextRange?)
+/** The raw prefix was matched separately. Its placeholders must still copy identically at each offset. */
+internal data class RichTextCopySemantics(val slots: List<RichTextCopySlot>, val terminalAnchor: TextRange?) {
+  fun matchesThrough(end: Int, other: RichTextCopySemantics): Boolean =
+    (terminalAnchor?.end == end) == (other.terminalAnchor?.end == end) &&
+      slots.takeWhile { it.range.start < end } == other.slots.takeWhile { it.range.start < end }
+}
 
 internal fun isEmptyParagraphRange(text: String, range: TextRange): Boolean =
   range.start in text.indices && range.end == range.start + 1 &&

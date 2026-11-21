@@ -12,6 +12,13 @@ private final class RichTextAttachmentSlot {
   let visibility = RichTextAttachmentVisibility()
   var request: RichTextAttachmentRequest?
 
+  func deactivate() {
+    visibility.setActive(false)
+    request?.cancel()
+    request = nil
+    attachment.releaseAsset()
+  }
+
   init(spec: RichTextSpec, attachment: RichTextAttachment, range: NSRange, fontSize: CGFloat, maxWidth: CGFloat, scale: CGFloat) {
     self.spec = spec; self.attachment = attachment; self.range = range
     self.fontSize = fontSize; self.maxWidth = maxWidth; self.scale = scale
@@ -28,6 +35,12 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
   private let container: NSTextContainer
   private let textView: FlowTextView
   private var flow: RichTextFlow?
+  private var renderedFlow: RichTextFlow?
+  private var renderedContent: NSAttributedString?
+  private var renderedConfigJson = ""
+  var preserveSelectionOnUpdate = false {
+    didSet { if oldValue != preserveSelectionOnUpdate { needsRebuild = true } }
+  }
   private var config = RichTextConfig()
   private var previousFlowJson = ""
   private var previousConfigJson = ""
@@ -82,7 +95,7 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
     container.widthTracksTextView = false
     container.heightTracksTextView = false
     addSubview(textView)
-    textView.copyResolver = { [weak self] range in self?.flow?.selectionText(range) }
+    textView.copyResolver = { [weak self] range in self?.renderedFlow?.selectionText(range) }
     tap.cancelsTouchesInView = false
     tap.delegate = self
     longPress.cancelsTouchesInView = false
@@ -194,34 +207,48 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
   private var effectiveWidth: CGFloat { contentWidth > 0 ? contentWidth : bounds.width }
 
   private func rebuild(width: CGFloat) {
-    let previousFlowIdentity = renderedIdentity
+    let previous = renderedFlow
+    let patch = preserveSelectionOnUpdate && previous != nil && previous?.id == flow?.id
+    // Enabling streaming on an already mounted static view has no saved
+    // candidate yet; take its current attributes once for the first diff.
+    let before = patch ? (renderedContent ?? NSAttributedString(attributedString: storage)) : nil
+    let oldSlots = attachments
+    var candidates: [Int: RichTextAttachmentSlot] = [:]
+    if patch && width == lastWidth && renderedConfigJson == previousConfigJson {
+      for slot in oldSlots { candidates[slot.range.location] = slot }
+    }
+    renderedConfigJson = previousConfigJson
     let selection = textView.selectedRange
     generation += 1
     needsRebuild = false
     lastWidth = width
     lastHeightKey = ""
-    releaseAttachments()
-    attachments.removeAll()
-    attachmentUpdates.removeAll()
-    attachmentUpdateScheduled = false
+    lastAttachmentViewport = nil
     manager.decorations = []
     manager.annotations = []
-    manager.resetAnnotationGeometry()
     manager.quotes = []
     suppressSelection = true
     defer { suppressSelection = false; emitSelection() }
     guard let flow else {
-      renderedIdentity = nil
-      storage.setAttributedString(NSAttributedString(string: ""))
+      releaseAttachments()
+      attachments.removeAll()
+      renderedContent = nil
+      renderedFlow = nil
+      manager.resetAnnotationGeometry()
+      textView.attributedText = NSAttributedString(string: "")
       return
     }
-    renderedIdentity = (flow.id, flow.textVersion)
+    renderedFlow = flow
     let baseFont = UIFontMetrics(forTextStyle: .body).scaledFont(for: UIFont.systemFont(ofSize: config.fontSize), compatibleWith: traitCollection)
     let scale = baseFont.pointSize / config.fontSize
     manager.scale = scale
     manager.quoteColor = config.secondaryColor
-    textView.font = baseFont
-    textView.textColor = config.textColor
+    // UITextView's setters change attributes across its entire live storage.
+    // Snapshot updates apply those defaults on the candidate's runs instead.
+    if !patch {
+      textView.font = baseFont
+      textView.textColor = config.textColor
+    }
     textView.tintColor = config.linkColor
     let paragraphStyle = NSMutableParagraphStyle()
     config.configure(paragraphStyle, text: flow.text as String)
@@ -317,34 +344,51 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
         offset: CGFloat(richTextNumber(spec["offset"], fallback: 3)) * scale
       )
     }
-    for spec in flow.attachments {
+    attachments = flow.attachments.compactMap { spec in
       guard let range = richTextRange(spec, in: flow.text), range.length == 1,
-            flow.text.character(at: range.location) == 0xfffc else { continue }
-      let attachment = RichTextAttachment(spec: spec, font: baseFont, maxWidth: width, textColor: config.textColor, secondaryColor: config.secondaryColor, scale: scale)
-      content.addAttribute(.attachment, value: attachment, range: range)
-      attachments.append(RichTextAttachmentSlot(spec: spec, attachment: attachment, range: range, fontSize: baseFont.pointSize, maxWidth: width, scale: scale))
+            flow.text.character(at: range.location) == 0xfffc else { return nil }
+      let slot: RichTextAttachmentSlot
+      if let old = candidates.removeValue(forKey: range.location), old.fontSize == baseFont.pointSize,
+         old.scale == scale, (old.spec as NSDictionary).isEqual(to: spec) {
+        slot = old
+      } else {
+        let attachment = RichTextAttachment(spec: spec, font: baseFont, maxWidth: width, textColor: config.textColor, secondaryColor: config.secondaryColor, scale: scale)
+        slot = RichTextAttachmentSlot(spec: spec, attachment: attachment, range: range, fontSize: baseFont.pointSize, maxWidth: width, scale: scale)
+      }
+      content.addAttribute(.attachment, value: slot.attachment, range: range)
+      return slot
     }
+    let activeSlots = Set(attachments.map(ObjectIdentifier.init))
+    for slot in oldSlots where !activeSlots.contains(ObjectIdentifier(slot)) { slot.deactivate() }
     manager.annotations = flow.annotations.compactMap {
       RichTextDrawAnnotation.make($0, content: content, fallback: baseFont, color: config.textColor, language: config.language)
     }
-    storage.setAttributedString(content)
-    textView.isSelectable = selectable
-    if let previous = previousFlowIdentity, previous.0 == flow.id, previous.1 == flow.textVersion,
-       selection.location != NSNotFound, selection.location <= flow.text.length,
-       selection.length <= flow.text.length - selection.location,
-       validRichTextBoundary(selection.location, in: flow.text), validRichTextBoundary(NSMaxRange(selection), in: flow.text) {
-      textView.selectedRange = selection
+    if textView.isSelectable != selectable { textView.isSelectable = selectable }
+    if let before, let previous {
+      applyRichTextSnapshot(to: textView, selection: selection, previous: previous, previousContent: before, next: flow, content: content)
     } else {
-      textView.selectedRange = NSRange(location: 0, length: 0)
+      // A full replacement also refreshes UIKit's cached accessibility paragraphs.
+      textView.attributedText = content
+      let sameVersion = previous?.id == flow.id && previous?.textVersion == flow.textVersion
+      if sameVersion, selection.location != NSNotFound, selection.location <= flow.text.length,
+         selection.length <= flow.text.length - selection.location,
+         validRichTextBoundary(selection.location, in: flow.text), validRichTextBoundary(NSMaxRange(selection), in: flow.text) {
+        textView.selectedRange = selection
+      } else {
+        textView.selectedRange = NSRange(location: 0, length: 0)
+      }
     }
+    renderedContent = preserveSelectionOnUpdate ? content : nil
+    if !patch || previous?.annotations.isEmpty == false || !flow.annotations.isEmpty {
+      manager.resetAnnotationGeometry()
+    }
+    textView.setNeedsDisplay()
   }
 
   private func releaseAttachments() {
     lastAttachmentViewport = nil
     for slot in attachments {
-      slot.visibility.setActive(false)
-      slot.request?.cancel(); slot.request = nil
-      slot.attachment.releaseAsset()
+      slot.deactivate()
       manager.invalidateDisplay(forCharacterRange: slot.range)
     }
     attachmentUpdates.removeAll()
@@ -352,7 +396,7 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
   }
 
   private func synchronizeAttachments() {
-    guard !synchronizingAttachments else { return }
+    guard !suppressSelection, !synchronizingAttachments else { return }
     guard let window, !pausedAttachments, !isHidden, !window.isHidden else { releaseAttachments(); return }
     guard !attachments.isEmpty, container.size.width > 0 else { return }
     synchronizingAttachments = true
@@ -379,18 +423,17 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
         manager.invalidateDisplay(forCharacterRange: slot.range)
       }
       guard let revision = slot.visibility.beginLoad() else { continue }
-      let currentGeneration = generation
+      // A matching slot can survive several snapshots. Retiring a slot
+      // invalidates its visibility revision before any queued work may edit.
       slot.request = RichTextAttachmentLoader.load(spec: slot.spec, fontSize: slot.fontSize, maxWidth: slot.maxWidth, scale: slot.scale) { [weak self, weak slot] asset in
-        guard let self, let slot, self.generation == currentGeneration, slot.visibility.accepts(revision) else { return }
+        guard let self, let slot, slot.visibility.accepts(revision) else { return }
         slot.request = nil
         guard let asset else { return }
         self.attachmentUpdates.append((slot, revision, asset))
-        self.scheduleAttachmentUpdate(generation: currentGeneration)
+        self.scheduleAttachmentUpdate()
       }
     }
   }
-
-  private var renderedIdentity: (String, String)?
 
   private func applyFont(_ content: NSMutableAttributedString, range: NSRange, fallback: UIFont, transform: @escaping (UIFont) -> UIFont) {
     var updates: [(NSRange, UIFont)] = []
@@ -400,14 +443,15 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
     for (range, font) in updates { content.addAttribute(.font, value: font, range: range) }
   }
 
-  private func scheduleAttachmentUpdate(generation: Int) {
+  private func scheduleAttachmentUpdate() {
     guard !attachmentUpdateScheduled else { return }
     attachmentUpdateScheduled = true
     DispatchQueue.main.async { [weak self] in
-      guard let self, self.generation == generation else { return }
+      guard let self else { return }
       self.attachmentUpdateScheduled = false
       let updates = self.attachmentUpdates.filter { $0.0.visibility.accepts($0.1) }
       self.attachmentUpdates.removeAll()
+      guard !updates.isEmpty else { return }
       let selection = self.textView.selectedRange
       self.suppressSelection = true
       self.storage.beginEditing()
@@ -458,7 +502,7 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
   public func textViewDidChangeSelection(_ textView: UITextView) { emitSelection() }
 
   private func emitSelection() {
-    guard !suppressSelection, let flow, renderedIdentity?.0 == flow.id, renderedIdentity?.1 == flow.textVersion else { return }
+    guard !suppressSelection, let flow, renderedFlow?.id == flow.id, renderedFlow?.textVersion == flow.textVersion else { return }
     let selection = textView.selectedRange
     let valid = selectable && validRichTextRange(selection, in: flow.text)
     let start = valid ? selection.location : -1

@@ -1,5 +1,40 @@
 import UIKit
 
+/// The native bridge still parses and builds a complete attributed candidate.
+/// Comparing text and attribute runs also visits the unchanged prefix. TextKit
+/// receives only changed attributes and the changed UTF-16 text suffix.
+@MainActor func applyRichTextSnapshot(to view: UITextView, selection: NSRange, previous: RichTextFlow,
+                           previousContent: NSAttributedString, next: RichTextFlow, content: NSAttributedString) {
+  let limit = min(previous.text.length, next.text.length)
+  var prefix = 0
+  while prefix < limit && previous.text.character(at: prefix) == next.text.character(at: prefix) { prefix += 1 }
+  if !validRichTextBoundary(prefix, in: previous.text) || !validRichTextBoundary(prefix, in: next.text) {
+    prefix -= 1
+  }
+  let keep = view.isSelectable && next.preservesSelection(selection, from: previous, commonTextLength: prefix)
+  let storage = view.textStorage
+  storage.beginEditing()
+  var offset = 0
+  while offset < prefix {
+    var oldRange = NSRange()
+    var newRange = NSRange()
+    let oldAttributes = previousContent.attributes(at: offset, effectiveRange: &oldRange)
+    let newAttributes = content.attributes(at: offset, effectiveRange: &newRange)
+    let end = min(prefix, NSMaxRange(oldRange), NSMaxRange(newRange))
+    if !(oldAttributes as NSDictionary).isEqual(to: newAttributes) {
+      storage.setAttributes(newAttributes, range: NSRange(location: offset, length: end - offset))
+    }
+    offset = end
+  }
+  if prefix < previousContent.length || prefix < content.length {
+    let suffix = content.attributedSubstring(from: NSRange(location: prefix, length: content.length - prefix))
+    storage.replaceCharacters(in: NSRange(location: prefix, length: previousContent.length - prefix), with: suffix)
+  }
+  storage.endEditing()
+  let target = keep ? selection : NSRange(location: 0, length: 0)
+  if view.selectedRange != target { view.selectedRange = target }
+}
+
 struct RichTextDrawDecoration {
   let range: NSRange
   let kind: String

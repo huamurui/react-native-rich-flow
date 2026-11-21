@@ -65,6 +65,12 @@ struct RichTextFlow {
     return result
   }
 
+  func preservesSelection(_ range: NSRange, from previous: RichTextFlow, commonTextLength: Int) -> Bool {
+    guard id == previous.id, validRichTextRange(range, in: previous.text),
+          validRichTextRange(range, in: text), NSMaxRange(range) <= commonTextLength else { return false }
+    let prefix = NSRange(location: 0, length: NSMaxRange(range))
+    return copySlots(in: prefix) == previous.copySlots(in: prefix)
+  }
 
 }
 
