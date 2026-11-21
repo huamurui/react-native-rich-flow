@@ -166,6 +166,17 @@ internal class FlowTextView(context: Context) : TextView(context) {
     }
   }
 
+  override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+    if (layout != null && isTextSelectable) {
+      // A layout measured while detached can leave TextView's selection handles
+      // disabled. Refresh the Editor's controllers without replacing its buffer.
+      val originalVisibility = isCursorVisible
+      isCursorVisible = !originalVisibility
+      isCursorVisible = originalVisibility
+    }
+  }
+
   override fun onDetachedFromWindow() {
     cancelReadingGesture()
     hostOwnsTouch = false
