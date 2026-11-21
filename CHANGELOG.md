@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Allow the SDK 54 New Architecture host with React Native 0.81.5 and Expo Modules Core 3.0.30 in the native peer ranges. The example continues to use SDK 55.
+
 - Add opt-in `preserveSelectionOnUpdate` on RichFlow and a streaming Markdown playground that replays UTF-8 SSE text deltas into formatted native text.
 - Restore an active Android system Copy menu after eligible Markdown and plain-text updates.
 - Add the `PlainTextStream` native prototype and an offline bilingual playground case for selecting and copying earlier text during generation.

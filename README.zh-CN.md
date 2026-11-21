@@ -59,9 +59,18 @@ npm run example:ios
 
 ## 接入自己的应用
 
-开发基线为 Expo SDK 55、Expo Modules Core 55、React 19.2 和 React Native 0.83.10。peer 版本范围不等于所有版本都经过验证。Node.js 版本以包的 `engines` 为准。
+使用 Expo SDK 配套的 React 与 React Native。原生入口验证过以下新架构宿主。
 
-已有的裸 React Native 工程需要先按对应 RN / Expo 版本[安装并配置 Expo Modules](https://docs.expo.dev/bare/installing-expo-modules/)。安装时使用 `npm install react-native-rich-flow@0.1.0-alpha.0`，或用 `react-native-rich-flow@alpha` 跟随 alpha 渠道。测试本地改动时可以使用压缩包：
+| Expo | React Native | React | Expo Modules Core | 验证范围 |
+| --- | --- | --- | --- | --- |
+| 55.0.31 | 0.83.10 | 19.2.0 | 55.0.26 | 示例开发基线。iPhone SE 上验证了流式复制、粘贴，Android 已构建并通过 JVM 测试。 |
+| 54.0.38 | 0.81.5 | 19.1.0 | 3.0.30 | 供已有应用接入，尚未发布。已验证打包安装、Hermes 流式回放和原生编译；这组版本的设备手势待验。 |
+
+SDK 54 目前请使用本分支生成的 tarball。npm 已发布的 `0.1.0-alpha.0` 要求 Core 55。SDK 54 的更早补丁、SDK 53 和旧架构均在本次验证范围之外。只使用数据模型和适配器时可以省去原生 peer。Node.js 版本以包的 `engines` 为准。[验证记录](./docs/validation.md#expo-sdk-54-compatibility) · [Expo SDK 54 版本说明](https://expo.dev/changelog/sdk-54)
+
+使用 Xcode 27 和 SDWebImage 5.21.7 构建时，需要将 SDWebImage 隐私资源 bundle 的最低 iOS 版本设为宿主的最低版本。[示例构建说明](https://github.com/huamurui/react-native-rich-flow/blob/main/example/README.md)
+
+已有的裸 React Native 工程需要先按对应 RN / Expo 版本[安装并配置 Expo Modules](https://docs.expo.dev/bare/installing-expo-modules/)。SDK 55 可安装已发布的 `react-native-rich-flow@0.1.0-alpha.0`，或用 `react-native-rich-flow@alpha` 跟随 alpha 渠道。SDK 54 或测试未发布功能时，请先打包本地工作树。
 
 ```bash
 # 在库仓库中：

@@ -83,20 +83,27 @@ light theme. Tap an image for full resolution. [Capture notes](./docs/images/REA
 
 ## Use in another app
 
-The development baseline is Expo SDK 55, Expo Modules Core 55, React 19.2, and
-React Native 0.83.10. Broad peer version ranges are not a compatibility matrix.
-Node.js must satisfy the package's `engines` field. An existing bare React Native
-app must first [install and configure Expo Modules](https://docs.expo.dev/bare/installing-expo-modules/)
-using the instructions appropriate to its React Native / Expo versions.
+Use the React and React Native versions paired with your Expo SDK. The native entry point was checked with these New Architecture hosts.
 
-Install the alpha explicitly:
+| Expo | React Native | React | Expo Modules Core | Coverage |
+| --- | --- | --- | --- | --- |
+| 55.0.31 | 0.83.10 | 19.2.0 | 55.0.26 | Playground baseline. iOS streaming copy/paste on iPhone SE and Android build/JVM tests. |
+| 54.0.38 | 0.81.5 | 19.1.0 | 3.0.30 | Unreleased compatibility for existing apps. Packed-consumer installation, Hermes streaming replay and native compilation. Device gestures are unverified on this SDK. |
+
+For SDK 54, use a tarball from this branch until an alpha containing the peer update is released. The published `0.1.0-alpha.0` requires Core 55. Earlier SDK 54 patches, SDK 53 and the Legacy Architecture are outside this validation. The pure model and adapters can run without native peers. [Validation details](./docs/validation.md#expo-sdk-54-compatibility) · [Expo SDK 54](https://expo.dev/changelog/sdk-54)
+
+When building with Xcode 27 and SDWebImage 5.21.7, set the generated SDWebImage privacy resource bundle's deployment target to the app's minimum. [Playground build notes](https://github.com/huamurui/react-native-rich-flow/blob/main/example/README.md)
+
+Node.js must satisfy the package's `engines` field. Bare React Native apps using the native entry point need Expo Modules configured for the host version. [Install Expo Modules](https://docs.expo.dev/bare/installing-expo-modules/)
+
+On SDK 55, install the published alpha with npm.
 
 ```bash
 npm install react-native-rich-flow@0.1.0-alpha.0
 # Or follow the alpha channel: npm install react-native-rich-flow@alpha
 ```
 
-To test a local checkout instead, build a package:
+For SDK 54 or unreleased features, pack a local checkout.
 
 ```bash
 # In the library repository:
