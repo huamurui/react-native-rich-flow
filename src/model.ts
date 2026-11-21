@@ -24,6 +24,8 @@ export interface RichTextParagraph extends RichTextRange {
   readonly nodeId: string;
   readonly paragraphId?: string;
   readonly kind: 'paragraph' | 'heading' | 'quote' | 'listItem' | 'code';
+  /** Owns one blank line, represented by its newline or a synthetic terminal U+200B. */
+  readonly emptyLine?: true;
   readonly level?: number;
   readonly fontSize?: number;
   readonly lineHeight?: number;
@@ -107,6 +109,7 @@ export interface RichTextSelectionMapping {
 /** The minimal input needed for semantic copying. */
 export interface RichTextSelectionSource {
   readonly text: string;
+  readonly paragraphs?: readonly Pick<RichTextParagraph, 'start' | 'end' | 'emptyLine'>[];
   readonly attachments: readonly Pick<RichTextAttachment, 'start' | 'end' | 'copyText'>[];
 }
 

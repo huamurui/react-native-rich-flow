@@ -7,6 +7,12 @@ import { getRichTextSelectionText, mapRichTextSelection } from '../dist/esm/sele
 
 const flowFromHtml = (html, options) => compileDocument(parseHtml(html, options));
 
+test('HTML recognizes empty paragraphs and preserves explicit inline breaks and list markers', () => {
+  const flow = flowFromHtml('<p></p><p> <br> </p><p>A<br>B<br><br>C</p><ul><li><p><br></p></li></ul><p></p>');
+  assert.equal(getRichTextSelectionText(flow, 0, flow.text.length), '\n\nA\nB\n\nC\n• \n');
+  assert.deepEqual(flow.paragraphs.map(p => !!p.emptyLine), [true, true, false, false, true]);
+});
+
 test('HTML ruby pairs readings with bases without leaking rt/rp into selection', () => {
   const flow = flowFromHtml('<p><ruby><rb>漢</rb><rp>(</rp><rt>かん</rt><rp>)</rp>字<rt>じ</rt></ruby> <ruby data-ruby-position="under">语<rt>yǔ &amp; yù</rt></ruby><rt>orphan</rt></p>');
   assert.equal(flow.text, '漢字 语');

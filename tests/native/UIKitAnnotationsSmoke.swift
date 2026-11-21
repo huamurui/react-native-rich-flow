@@ -156,7 +156,20 @@ struct UIKitAnnotationsSmoke {
     withExtendedLifetime(raisedStorage) {}
   }
 
-  static func main() throws {
+  @MainActor static func main() throws {
+    let (blankStorage, blankManager, blankContainer) = layout("\nBody\n\u{200b}", width: 240, annotations: [])
+    for start in [0, blankStorage.length - 1] {
+      let spec: RichTextSpec = ["start": start, "end": start + 1, "emptyLine": true, "lineHeight": 10]
+      let range = richTextEmptyParagraphRange(spec, in: blankStorage.string as NSString)!
+      let style = NSMutableParagraphStyle()
+      let font = RichTextConfig().configureEmptyParagraph(style, spec: spec, font: .systemFont(ofSize: 20), scale: 1)
+      blankStorage.addAttributes([.font: font, .paragraphStyle: style], range: range)
+    }
+    blankManager.ensureLayout(for: blankContainer)
+    let blankRects = lineRects(blankManager, blankContainer)
+    expect(blankRects.count == 3, "Leading and terminal blanks are both measurable")
+    expect(blankRects[0].fragment.height == 10 && blankRects[2].fragment.height == 10, "Each explicit blank receives its own height")
+    expect(blankRects[1].fragment.height >= 28, "Compact blank lines preserve the body line height")
     verifyReusableLineSpace()
     let text = "漢字仮名交錯文章"
     let range: RichTextSpec = ["start": 0, "end": (text as NSString).length]

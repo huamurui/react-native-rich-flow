@@ -14,6 +14,16 @@ internal data class FlowData(
   val attachments: List<JSONObject>,
   val annotations: List<JSONObject> = emptyList()
 ) {
+  val copySemantics: RichTextCopySemantics by lazy(LazyThreadSafetyMode.NONE) {
+    val slots = attachments.mapNotNull { attachment ->
+      val range = attachment.range(text) ?: return@mapNotNull null
+      if (range.end != range.start + 1 || text[range.start] != '\ufffc') return@mapNotNull null
+      RichTextCopySlot(range, attachment.opt("copyText") as? String ?: attachment.opt("latex") as? String ?: attachment.opt("alt") as? String ?: "[图片]")
+    }.sortedBy { it.range.start }.distinctBy { it.range.start }
+    val terminalAnchor = if (text.endsWith('\u200b')) paragraphs.lastOrNull()?.emptyParagraphRange(text) else null
+    RichTextCopySemantics(slots, terminalAnchor?.takeIf { it.end == text.length })
+  }
+
   companion object {
     fun parse(value: String): FlowData? = runCatching {
       val json = JSONObject(value)
@@ -61,6 +71,9 @@ internal data class TextConfig(
 }
 
 internal fun JSONObject.range(text: String): TextRange? = richTextRange(opt("start"), opt("end"), text)
+
+internal fun JSONObject.emptyParagraphRange(text: String): TextRange? =
+  if (opt("emptyLine") == true) range(text)?.takeIf { isEmptyParagraphRange(text, it) } else null
 
 internal fun JSONObject.number(key: String, fallback: Double = Double.NaN): Double = richTextNumber(opt(key), fallback)
 

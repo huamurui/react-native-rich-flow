@@ -275,6 +275,9 @@ public final class RichTextView: ExpoView, UITextViewDelegate, UIGestureRecogniz
         manager.quotes.append(range)
         content.addAttribute(.foregroundColor, value: config.secondaryColor, range: range)
       }
+      if richTextEmptyParagraphRange(spec, in: flow.text) != nil {
+        font = config.configureEmptyParagraph(style, spec: spec, font: font, scale: scale)
+      }
       // A minimum height leaves tall image/formula attachments free to extend the line.
       content.addAttributes([.font: font, .paragraphStyle: style], range: range)
     }

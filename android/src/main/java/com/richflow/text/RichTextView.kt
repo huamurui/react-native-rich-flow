@@ -259,7 +259,10 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
       content.setSpan(span, range.start, range.end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
     if (content.isNotEmpty()) {
-      apply(ParagraphHeightSpan(TextRange(0, content.length), px(config.lineHeight), 0, 0), TextRange(0, content.length))
+      // Apply the document minimum first, then paragraph-specific metrics.
+      val all = TextRange(0, content.length)
+      content.setSpan(ParagraphHeightSpan(all, px(config.lineHeight), 0, 0), all.start, all.end,
+        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE or (1 shl Spanned.SPAN_PRIORITY_SHIFT))
     }
     for (spec in activeFlow.spans) {
       val range = spec.range(activeFlow.text) ?: continue
@@ -311,7 +314,12 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
           apply(InlineBackgroundSpan((config.secondaryColor and 0x00ffffff) or 0x16000000), range)
         }
       }
-      apply(ParagraphHeightSpan(range, px(lineHeight), px(marginTop), px(marginBottom)), range)
+      if (spec.emptyParagraphRange(activeFlow.text) != null) {
+        val blankHeight = spec.number("lineHeight", config.lineHeight.toDouble()).toFloat()
+        apply(EmptyParagraphHeightSpan(range, max(1, px(blankHeight))), range)
+      } else {
+        apply(ParagraphHeightSpan(range, px(lineHeight), px(marginTop), px(marginBottom)), range)
+      }
     }
     val maxAttachmentWidth = max(1f, if (contentWidthPx > 0) contentWidthPx.toFloat() else resources.displayMetrics.widthPixels.toFloat())
     val fontPx = config.fontSize * textScale
@@ -496,11 +504,8 @@ class RichTextView(context: Context, appContext: AppContext) : ExpoView(context,
 
   private fun copyText(start: Int, end: Int): String {
     val activeFlow = flow ?: return ""
-    val slots = activeFlow.attachments.mapNotNull { attachment ->
-      val range = attachment.range(activeFlow.text) ?: return@mapNotNull null
-      RichTextCopySlot(range, attachment.opt("copyText") as? String ?: attachment.opt("latex") as? String ?: attachment.opt("alt") as? String ?: "[图片]")
-    }
-    return richTextSelectionText(activeFlow.text, start, end, slots) ?: ""
+    val copy = activeFlow.copySemantics
+    return richTextSelectionText(activeFlow.text, start, end, copy.slots, copy.terminalAnchor) ?: ""
   }
 
   private fun px(dp: Float): Int = ceil(dp.coerceAtLeast(0f) * textScale).toInt()

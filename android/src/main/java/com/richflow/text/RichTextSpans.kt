@@ -37,6 +37,19 @@ internal class ParagraphHeightSpan(
   }
 }
 
+/** Empty paragraphs have no glyphs whose ascent/descent must be preserved. */
+internal class EmptyParagraphHeightSpan(private val range: TextRange, private val height: Int) : LineHeightSpan {
+  override fun chooseHeight(
+    text: CharSequence, start: Int, end: Int, spanstartv: Int, v: Int, fm: Paint.FontMetricsInt
+  ) {
+    if (start != range.start || end != range.end) return
+    fm.ascent = -height
+    fm.top = fm.ascent
+    fm.descent = 0
+    fm.bottom = 0
+  }
+}
+
 internal class ScriptSpan(private val superscript: Boolean) : MetricAffectingSpan() {
   override fun updateDrawState(paint: TextPaint) = apply(paint)
   override fun updateMeasureState(paint: TextPaint) = apply(paint)

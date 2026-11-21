@@ -237,9 +237,13 @@ export function parseHtml(html: string, options: ParseOptions = {}): RichFlowDoc
       flush();
       if (name === 'p' || /^h[1-6]$/.test(name)) {
         const children = paragraphContent(node.children, depth + 1);
-        result.push(name === 'p'
-          ? { id: id('paragraph'), type: 'paragraph', children }
-          : { id: id('heading'), type: 'heading', level: Number(name[1]) as 1 | 2 | 3 | 4 | 5 | 6, children });
+        if (name === 'p') {
+          // A lone br is commonly used to keep an empty editor paragraph open.
+          const placeholder = children.length === 1 && children[0]?.type === 'break';
+          result.push({ id: id('paragraph'), type: 'paragraph', children: placeholder ? [] : children });
+        } else {
+          result.push({ id: id('heading'), type: 'heading', level: Number(name[1]) as 1 | 2 | 3 | 4 | 5 | 6, children });
+        }
       } else if (name === 'blockquote') {
         result.push({ id: id('quote'), type: 'quote', blocks: blocks(node.children, depth + 1) });
       } else if (name === 'ul' || name === 'ol') {

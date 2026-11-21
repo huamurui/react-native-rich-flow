@@ -25,15 +25,26 @@ internal fun richTextRange(start: Any?, end: Any?, text: String): TextRange? {
 
 internal data class RichTextCopySlot(val range: TextRange, val text: String)
 
-internal fun richTextSelectionText(text: String, start: Int, end: Int, slots: List<RichTextCopySlot>): String? {
+internal data class RichTextCopySemantics(val slots: List<RichTextCopySlot>, val terminalAnchor: TextRange?)
+
+internal fun isEmptyParagraphRange(text: String, range: TextRange): Boolean =
+  range.start in text.indices && range.end == range.start + 1 &&
+    (range.start == 0 || text[range.start - 1] == '\n') &&
+    (text[range.start] == '\n' || (range.end == text.length && text[range.start] == '\u200b'))
+
+internal fun richTextSelectionText(
+  text: String, start: Int, end: Int, slots: List<RichTextCopySlot>, lastEmptyParagraph: TextRange? = null
+): String? {
   val selection = richTextRange(start, end, text) ?: return null
+  val copyEnd = if (end == text.length && lastEmptyParagraph?.end == end &&
+    isEmptyParagraphRange(text, lastEmptyParagraph) && text[end - 1] == '\u200b') end - 1 else end
   val result = StringBuilder()
   var cursor = selection.start
   for (slot in slots.sortedBy { it.range.start }) {
     val range = richTextRange(slot.range.start, slot.range.end, text) ?: continue
-    if (range.end - range.start != 1 || text[range.start] != '\ufffc' || range.start < cursor || range.end > selection.end) continue
+    if (range.end - range.start != 1 || text[range.start] != '\ufffc' || range.start < cursor || range.end > copyEnd) continue
     result.append(text.substring(cursor, range.start)).append(slot.text)
     cursor = range.end
   }
-  return result.append(text.substring(cursor, selection.end)).toString()
+  return result.append(text.substring(cursor, copyEnd)).toString()
 }

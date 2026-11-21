@@ -55,6 +55,7 @@ export function compileDocument(
   }
   const fontSize = positive(options.fontSize, 17);
   const lineHeight = positive(options.lineHeight, fontSize * 1.5);
+  const emptyParagraphHeight = positive(options.emptyParagraphHeight, lineHeight);
   const paragraphSpacing = nonnegative(options.paragraphSpacing, 12);
   const indentSize = nonnegative(options.indentSize, 20);
   const spans: RichTextSpan[] = [];
@@ -65,7 +66,9 @@ export function compileDocument(
   const sourceMap: RichTextSourceRange[] = [];
   const ids = new Set<string>();
   let text = '';
-  let paragraphCount = 0;
+  // Undefined before the first block. A block with no paragraph metrics still
+  // separates its neighbors, but does not own their formatting.
+  let previousParagraph: RichTextParagraph | null | undefined;
 
   function register(id: string): void {
     if (typeof id !== 'string' || id.length === 0 || ids.has(id)) {
@@ -173,12 +176,12 @@ export function compileDocument(
     block: Extract<RichFlowBlock, { type: 'paragraph' | 'heading' | 'code' }>,
     context: Context,
   ): void {
-    if (paragraphCount > 0) {
+    if (previousParagraph !== undefined) {
       append('\n', block.id, block.id, 'synthetic');
-      const last = paragraphs[paragraphs.length - 1];
-      if (last) paragraphs[paragraphs.length - 1] = { ...last, end: text.length };
+      if (previousParagraph) {
+        paragraphs[paragraphs.length - 1] = { ...previousParagraph, end: text.length };
+      }
     }
-    paragraphCount += 1;
     const start = text.length;
     if (context.marker && !context.marker.consumed) {
       append(context.marker.text, context.marker.nodeId, block.id, 'synthetic');
@@ -192,14 +195,18 @@ export function compileDocument(
     } else {
       inline(block.children, block.id);
     }
-    if (text.length === start) return;
+    const emptyLine = text.length === start && block.type === 'paragraph';
+    if (text.length === start && !emptyLine) {
+      previousParagraph = null;
+      return;
+    }
     const headingScale = block.type === 'heading' ? [2, 1.65, 1.4, 1.2, 1.1, 1][block.level - 1] ?? 1 : 1;
     const kind = context.quoteDepth > 0
       ? 'quote'
       : context.listDepth > 0
         ? 'listItem'
         : block.type;
-    paragraphs.push({
+    previousParagraph = {
       nodeId: block.id,
       paragraphId: block.id,
       kind,
@@ -207,11 +214,13 @@ export function compileDocument(
       end: text.length,
       ...(block.type === 'heading' ? { level: block.level } : {}),
       fontSize: fontSize * headingScale,
-      lineHeight: lineHeight * headingScale,
+      ...(emptyLine && { emptyLine: true as const }),
+      lineHeight: emptyLine ? emptyParagraphHeight : lineHeight * headingScale,
       indent: (context.quoteDepth + context.listDepth) * indentSize,
       marginTop: block.type === 'heading' ? paragraphSpacing * 0.5 : 0,
-      marginBottom: paragraphSpacing,
-    });
+      marginBottom: emptyLine ? 0 : paragraphSpacing,
+    };
+    paragraphs.push(previousParagraph);
     if (block.type === 'heading') {
       spans.push({ nodeId: block.id, kind: 'strong', start, end: text.length });
     }
@@ -248,6 +257,13 @@ export function compileDocument(
   }
 
   blocks(document.blocks, { quoteDepth: 0, listDepth: 0 });
+  // Other blank paragraphs already own their terminating newline. At EOF the
+  // native engines need one character to attach the last paragraph's metrics.
+  const last = paragraphs[paragraphs.length - 1];
+  if (last?.emptyLine && last.start === text.length) {
+    append('\u200b', last.nodeId, last.nodeId, 'synthetic');
+    paragraphs[paragraphs.length - 1] = { ...last, end: text.length };
+  }
   if (sourceMap.some((range) => !isValidTextRange(text, range.start, range.end))) {
     throw new TypeError('Text nodes must not split a UTF-16 surrogate pair across node boundaries.');
   }

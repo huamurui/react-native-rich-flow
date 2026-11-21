@@ -39,6 +39,15 @@ struct ModelsSmoke {
     expect(flow.selectionText(NSRange(location: 3, length: 1)) == "x²", "Attachment copy uses semantic text")
     expect(flow.selectionText(NSRange(location: 2, length: 2)) == nil, "Invalid native selections cannot produce a source string")
     expect(RichTextFlow.parse("{") == nil, "Malformed JSON is rejected")
+    let blankText = "\n😀\u{200b}\n\u{200b}" as NSString
+    let lastBlank: RichTextSpec = ["start": 5, "end": 6, "emptyLine": true]
+    let blanks = RichTextFlow(id: "blanks", textVersion: "1", text: blankText, spans: [], paragraphs: [lastBlank],
+                              decorations: [], annotations: [], attachments: [])
+    expect(blanks.selectionText(NSRange(location: 0, length: 6)) == "\n😀\u{200b}\n", "Only the marked terminal placeholder is omitted")
+    expect(blanks.selectionText(NSRange(location: 5, length: 1)) == "", "A lone terminal placeholder copies as an empty string")
+    expect(richTextEmptyParagraphRange(["start": 0, "end": 1, "emptyLine": true], in: blankText) != nil, "A leading blank owns its newline")
+    expect(richTextEmptyParagraphRange(["start": 3, "end": 4, "emptyLine": true], in: blankText) == nil, "Interior zero-width text is not a blank paragraph")
+    expect(richTextEmptyParagraphRange(["start": 5, "end": 6, "emptyLine": 1], in: blankText) == nil, "Only a boolean marks an authored layout slot")
     expect(RichTextFlow.parse("{\"id\":\"missing-fields\"}") == nil, "Flow identity and text are mandatory")
     for offset: Any in ["1", 1.5, Double.infinity, Double.nan] {
       expect(richTextRange(["start": offset, "end": 3], in: text) == nil, "Offsets cannot be coerced or truncated")

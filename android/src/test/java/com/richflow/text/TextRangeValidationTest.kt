@@ -26,4 +26,17 @@ class TextRangeValidationTest {
     assertNull(richTextSelectionText(text, 2, 4, slots))
     assertNull(richTextSelectionText(text, -1, 4, slots))
   }
+
+  @Test fun blankParagraphCopyPreservesNewlinesAndAuthoredZeroWidthCharacters() {
+    val text = "\n😀\u200b\n\u200b"
+    val last = TextRange(5, 6)
+    assertTrue(isEmptyParagraphRange(text, TextRange(0, 1)))
+    assertTrue(isEmptyParagraphRange(text, last))
+    assertFalse(isEmptyParagraphRange(text, TextRange(3, 4)))
+    assertEquals("\n😀\u200b\n", richTextSelectionText(text, 0, 6, emptyList(), last))
+    assertEquals("", richTextSelectionText(text, 5, 6, emptyList(), last))
+    assertNull(richTextSelectionText(text, 2, 6, emptyList(), last))
+    assertEquals("\u200b", richTextSelectionText("\u200b", 0, 1, emptyList()))
+    assertEquals("A\u200b", richTextSelectionText("A\u200b", 0, 2, emptyList(), TextRange(1, 2)))
+  }
 }
