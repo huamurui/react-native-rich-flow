@@ -1,0 +1,93 @@
+name: Prepare npm alpha
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Send the checked alpha tarball to npm for maintainer approval'
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: richflow-npm-alpha
+  cancel-in-progress: false
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha512: ${{ steps.digest.outputs.sha512 }}
+    steps:
+      - name: Require the main branch
+        run: test "$GITHUB_REF" = refs/heads/main
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '^24.22.3'
+          package-manager-cache: false
+      - name: Check release version, Git tag and main CI
+        if: inputs.stage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=commonjs <<'JS'
+          const assert = require('node:assert/strict');
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          assert.equal(pkg.name, 'react-native-rich-flow');
+          assert.match(pkg.version, /^\d+\.\d+\.\d+-alpha\.\d+$/);
+          assert.equal(require('./example/package.json').version, pkg.version);
+          assert.equal(lock.version, pkg.version);
+          assert.equal(lock.packages[''].version, pkg.version);
+          assert.equal(lock.packages.example.version, pkg.version);
+          JS
+          version=$(node -p "require('./package.json').version")
+          test "$(git rev-parse "refs/tags/v$version^{commit}")" = "$GITHUB_SHA"
+          passed=$(gh run list --workflow ci.yml --event push --branch main --commit "$GITHUB_SHA" \
+            --status success --limit 1 --json headSha --jq '.[0].headSha // empty')
+          test "$passed" = "$GITHUB_SHA"
+      - run: npm ci
+      - run: npm run check
+      - run: npm run check:package -- "$RUNNER_TEMP/richflow.tgz"
+      - name: Record tarball digest
+        id: digest
+        run: |
+          digest=$(sha512sum "$RUNNER_TEMP/richflow.tgz" | cut -d ' ' -f 1)
+          echo "sha512=$digest" >> "$GITHUB_OUTPUT"
+          printf 'Checked tarball SHA-512: `%s`\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: richflow-npm
+          path: ${{ runner.temp }}/richflow.tgz
+          if-no-files-found: error
+
+  stage:
+    needs: pack
+    if: inputs.stage && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: npm-alpha
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '^24.22.3'
+          package-manager-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: richflow-npm
+      - name: Stage the verified archive with npm trusted publishing
+        env:
+          EXPECTED_SHA512: ${{ needs.pack.outputs.sha512 }}
+        run: |
+          printf '%s  richflow.tgz\n' "$EXPECTED_SHA512" | sha512sum --check -
+          npm stage publish ./richflow.tgz --tag alpha --access public --provenance --ignore-scripts --registry=https://registry.npmjs.org/

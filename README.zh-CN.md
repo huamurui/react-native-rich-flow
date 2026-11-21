@@ -14,7 +14,7 @@ React Native 原生连续富文本组件：用一份文字缓冲区承载段落�
 
 RichFlow 面向阅读器和内容渲染器的底层能力。应用提供中立文档或编译后的 flow，再自行处理链接、菜单和业务动作。仓库也提供 Markdown / HTML 适配器，它们输出同一份文档模型。
 
-**0.1.0-alpha.0 是原生渲染器的早期预览版。** 0.0.1 只有数据模型和选区工具，不包含下文的原生组件。此 alpha 用于接入试用，稳定版前 API 与平台行为仍可能调整。仓库不会自动发布 npm。
+**0.1.0-alpha.0 是原生渲染器的早期预览版。** 0.0.1 只有数据模型和选区工具，不包含下文的原生组件。此 alpha 用于接入试用，稳定版前 API 与平台行为仍可能调整。维护者可在 GitHub Actions 预览打包结果，再把 alpha 候选版暂存到 npm，经人工批准后上线。[发布说明](https://github.com/huamurui/react-native-rich-flow/blob/main/PUBLISHING.md)
 
 ## 运行完整示例
 

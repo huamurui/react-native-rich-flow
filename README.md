@@ -22,8 +22,8 @@ to the same model.
 **Version 0.1.0-alpha.0 is an early preview of the native renderer.** The 0.0.1 API
 contains only models and selection utilities; it does not include the native
 component shown below. This alpha is intended for integration feedback; its API
-and platform behavior may change before a stable release. This repository does
-not publish to npm automatically.
+and platform behavior may change before a stable release. Maintainers can preview the
+checked package in GitHub Actions and stage an alpha for approval on npm. [Release instructions](https://github.com/huamurui/react-native-rich-flow/blob/main/PUBLISHING.md)
 
 ## Try the playground
 

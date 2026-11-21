@@ -1,8 +1,20 @@
 # 发布 RichFlow
 
-包名为 `react-native-rich-flow`，仓库为 [huamurui/react-native-rich-flow](https://github.com/huamurui/react-native-rich-flow)。当前发布目标是 **0.1.0-alpha.0**；0.0.1 的模型/选区工具与本版原生组件能力不同。采用 MIT 许可，版权署名见 `LICENSE`。
+包名为 `react-native-rich-flow`，仓库为 [huamurui/react-native-rich-flow](https://github.com/huamurui/react-native-rich-flow)。已发布的首个原生预览版是 **0.1.0-alpha.0**；0.0.1 的模型/选区工具与本版原生组件能力不同。采用 MIT 许可，版权署名见 `LICENSE`。
 
-本文件提供手动发布步骤。构建、检查、提交 Git 或推送 GitHub 都不会自动发布 npm。
+## GitHub Actions 发布预览版
+
+在 GitHub Actions 中打开 **Prepare npm alpha**，选择 `main` 后手动运行。默认只执行检查，并把通过干净安装验证的同一份 `richflow.tgz` 上传为该次运行的 artifact。运行摘要给出 SHA-512，可用于核对下载的包。普通 push、PR 或创建 Git tag 都不会触发发布工作流。
+
+首次使用暂存功能时，由 npm 包维护者在 **react-native-rich-flow → Settings → Trusted Publishers** 添加 GitHub Actions，填写用户 `huamurui`、仓库 `react-native-rich-flow`、工作流文件名 `publish.yml`、环境 `npm-alpha`。仅授权暂存，关闭直接发布和管理 dist-tag 的权限。在 GitHub 将 `npm-alpha` 环境的部署分支限制为 `main`。流水线使用 GitHub 托管 runner 与 OIDC，不需要保存 npm token。[npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)
+
+准备提交候选版时：
+
+1. 在版本 PR 里同步更新根包、示例包、锁文件版本和 CHANGELOG。等合入 `main` 的该提交通过 **Checks**，将 `v<包版本>` 标签指向这一提交并推送。预览版沿用 `X.Y.Z-alpha.N` 格式。
+2. 在同一 `main` 提交上运行 **Prepare npm alpha** 并勾选暂存。工作流检查版本、标签和该提交的 CI 状态，随后核对 tarball 摘要，用 `npm stage publish --tag alpha` 向 npm 暂存。只有这一 job 拥有 OIDC 权限，且不会签出源码或执行包内的脚本。
+3. 在 npm 的 **Staged Packages** 查看候选版本、仓库来源和 `alpha` 标签。维护者核对后用 2FA 批准才会上线，也可拒绝该候选。已有版本不能覆盖。发布作业使用 Node 24.22.3 或同一主版本的后续补丁，暂存命令要求 npm 11.15.0 或以上。[npm 暂存与批准](https://docs.npmjs.com/staged-publishing/)
+
+以下命令也可由维护者在本地检查或手动发布。
 
 ## 准备发布内容
 

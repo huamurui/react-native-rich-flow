@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,6 +41,8 @@ try {
   `], { cwd: temporary, stdio: 'inherit' });
   const installed = JSON.parse(readFileSync(join(temporary, 'node_modules/react-native-rich-flow/package.json'), 'utf8'));
   assert.equal(installed.license, 'MIT');
+  // CI can hand the exact archive that passed installation checks to the release job.
+  if (process.argv[2]) copyFileSync(join(temporary, archive.filename), process.argv[2]);
   console.log(`Verified ${archive.files.length} packed files and installed ESM/CommonJS core + adapter consumers.`);
 } finally {
   rmSync(temporary, { recursive: true, force: true });
