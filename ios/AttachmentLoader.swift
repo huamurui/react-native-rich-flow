@@ -376,6 +376,7 @@ private final class DownloadRecord {
 /** SVG parser metadata also rejects secondary network/file requests and executable markup. */
 private final class AttachmentSVGDocument: NSObject, XMLParserDelegate {
   var attributes: [String: String] = [:]
+  private var hasTransformedUse = false
   private var depth = 0
   private var elements = 0
   private var valid = true
@@ -423,6 +424,10 @@ private final class AttachmentSVGDocument: NSObject, XMLParserDelegate {
     root += " width=\"\(size.width)\" height=\"\(size.height)\">"
     var result = markup.replacingCharacters(in: range, with: root)
     if formula {
+      if hasTransformedUse {
+        guard let normalized = FormulaGlyphSVG.groupTransforms(in: result) else { return nil }
+        result = normalized
+      }
       // Theme is applied to the bitmap mask, including explicit black and currentColor.
       let currentColor = try? NSRegularExpression(pattern: "currentColor", options: .caseInsensitive)
       result = currentColor?.stringByReplacingMatches(in: result, range: NSRange(result.startIndex..., in: result), withTemplate: "#000000") ?? result
@@ -444,6 +449,7 @@ private final class AttachmentSVGDocument: NSObject, XMLParserDelegate {
       guard name == "svg" else { valid = false; parser.abortParsing(); return }
       attributes = attributeDict
     }
+    if elementName == "use" && attributeDict["transform"] != nil { hasTransformedUse = true }
     for (key, value) in attributeDict {
       let attribute = key.lowercased()
       if attribute.hasPrefix("on") || ((attribute == "href" || attribute.hasSuffix(":href"))
